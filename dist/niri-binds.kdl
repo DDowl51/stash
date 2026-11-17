@@ -1,0 +1,16 @@
+// stash 的快捷键例子。把需要的几行抄进 ~/.config/niri/config.kdl 的 binds { } 里。
+// 按键随意换，避开 niri 默认配置里已有的（比如 Mod+Shift+R 是切换窗口高度）。
+// niri 会热加载配置，不用重启。
+// niri 的 PATH 里没有 ~/.cargo/bin 时 spawn 会找不到命令，要写完整路径，比如 "/home/你/.cargo/bin/stash"。
+binds {
+    // 记一条：进收件箱，或者用 #t #i #r 当场分类
+    Mod+N       { spawn "stash" "capture"; }
+
+    // 直接记成某一类（文字里写了 # 时以 # 为准）
+    Mod+Alt+T   { spawn "stash" "capture" "--kind" "todo"; }
+    Mod+Alt+I   { spawn "stash" "capture" "--kind" "idea"; }
+    Mod+Alt+R   { spawn "stash" "capture" "--kind" "read"; }
+
+    // 打开整理界面（换成你的终端）
+    Mod+Alt+N   { spawn "ghostty" "-e" "stash-tui"; }
+}

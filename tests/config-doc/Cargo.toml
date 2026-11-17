@@ -1,0 +1,47 @@
+[package]
+name = "config-doc-test"
+description = "检查 docs/configuration.md：每个组件都有一节，写的键和默认值和代码一致。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dev-dependencies]
+config-doc.workspace = true
+
+[dependencies]
+# 全部组件。少了哪个，测试会指出来。
+browser-chromium.workspace = true
+browser-firefox.workspace = true
+browser-history.workspace = true
+browser-qutebrowser.workspace = true
+capture.workspace = true
+cli-clap.workspace = true
+clock-system.workspace = true
+context-browser.workspace = true
+context-screenshot.workspace = true
+context-script.workspace = true
+context-terminal.workspace = true
+context-window.workspace = true
+exec-tokio.workspace = true
+expand-calc.workspace = true
+expand-script.workspace = true
+expand-snippets.workspace = true
+items.workspace = true
+log-stderr.workspace = true
+notify-dbus.workspace = true
+process-procfs.workspace = true
+prompt-vicinae.workspace = true
+remind.workspace = true
+review.workspace = true
+screenshot-niri.workspace = true
+storage-sqlite.workspace = true
+tui-ratatui.workspace = true
+vcs-git.workspace = true
+wm-niri.workspace = true
+
+[build-dependencies]
+boot-build.workspace = true
+
+[lints]
+workspace = true

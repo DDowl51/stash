@@ -549,6 +549,11 @@ binds {
 | `notify-dbus` 的应用名 | — | 配置项 `app_name`，默认空，启动器 `set_default` 成 `stash`；另有 `bus`（测试用私有总线） | 系统服务里不能写应用名 |
 | systemd 文件位置 | `dist/systemd/` | `dist/stash-remind.{service,timer}`，和 lifelog 一样平放 | 和 lifelog 的安装脚本保持一样的形状 |
 | `capture` 扩展点的测试 | 假的 capture 宿主 | `capture-contracts` 的 `testing` 里有 `CaptureProbe`（两个扩展点的假所有者）、`context_contract`、`expander_contract` | 登记方的启动测试要有扩展点的所有者，否则配置错误来自缺依赖，测不到自己的配置检查 |
+| 用户文档的位置 | `docs/guide`、`docs/dev` | `docs/` 下平放：`installation.md`、`usage.md`、`configuration.md`、`architecture.md`，加 `docs/README.md` 索引 | 和 lifelog 一样的形状，两个项目的读者找得到同样的位置 |
+| 配置文档检查 | 照 lifelog 复制一份 `tests/config-doc` | 解析和对照逻辑抽到 mk-kit 的 `crates/config-doc`（加了整份文档的 `check()`），stash 和 lifelog 各留一个只链接组件的测试包（`config-doc-test`） | 两份同样的代码迟早会分叉 |
+| niri 快捷键 | `Mod+Shift+T / R` | `Mod+N` 记录，`Mod+Alt+T / I / R` 按分类记录，`Mod+Alt+N` 开整理界面（`dist/niri-binds.kdl`） | niri 默认配置里 `Mod+Shift+R` 已经占用（切换窗口高度） |
+| 安装脚本 | 装两个程序、放单元文件 | 另外把单元文件里的 `%h/.cargo/bin` 换成实际安装位置（尊重 `CARGO_INSTALL_ROOT`、`CARGO_HOME`）；检查运行时依赖，缺了只在 stderr 提醒 | 装到别处时 timer 会找不到程序 |
+| 覆盖率门槛 | `check.sh` 里检查 core 90%、其余 80% | 单独的 `scripts/coverage.sh`（cargo-llvm-cov + `coverage_gate.py`，只看 `features/*/{core,component}`），不在 `check.sh` 里 | 开发机没装 cargo-llvm-cov；装好之前放进 `check.sh` 会让每次提交都失败 |
 
 ## 12. 以后
 
@@ -558,3 +563,4 @@ binds {
 |---|---|---|
 | 实时预览（用户 2026-11-17 提出的 B 方案） | 写一个 vicinae 扩展代替 `prompt-vicinae` 的 dmenu，打字时调用 `stash parse --json` 显示分类、日期、计算结果；保存仍走 `stash capture --text` | `stash parse`；解析和展开都在 `capture`，扩展不重复实现 |
 | 手机同步 | 新组件 `sync`，订阅 `items.changed`，按 `updated_at` 合并，删除走 `deleted_at` 墓碑；截图等文件另外同步或不同步 | ULID、`updated_at`、`deleted_at`、`items.changed` 事件 |
+| 删除条目时删掉截图 | `context-screenshot` 订阅 `items.changed`，条目被删时删掉 `<dir>/<id>.png`（要能区分「删除」和别的变更：事件里带上变更类型，或者查一下条目还在不在） | `items.changed`、`screenshot.remove` |

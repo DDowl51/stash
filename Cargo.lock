@@ -379,6 +379,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "config-doc"
+version = "0.1.0"
+dependencies = [
+ "boot",
+ "kernel-api",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
+name = "config-doc-test"
+version = "0.1.0"
+dependencies = [
+ "boot-build",
+ "browser-chromium",
+ "browser-firefox",
+ "browser-history",
+ "browser-qutebrowser",
+ "capture",
+ "cli-clap",
+ "clock-system",
+ "config-doc",
+ "context-browser",
+ "context-screenshot",
+ "context-script",
+ "context-terminal",
+ "context-window",
+ "exec-tokio",
+ "expand-calc",
+ "expand-script",
+ "expand-snippets",
+ "items",
+ "log-stderr",
+ "notify-dbus",
+ "process-procfs",
+ "prompt-vicinae",
+ "remind",
+ "review",
+ "screenshot-niri",
+ "storage-sqlite",
+ "tui-ratatui",
+ "vcs-git",
+ "wm-niri",
+]
+
+[[package]]
 name = "context-browser"
 version = "0.1.0"
 dependencies = [

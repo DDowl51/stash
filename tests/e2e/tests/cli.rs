@@ -391,11 +391,19 @@ fn remind_dry_run_and_a_missing_notification_service() {
         &mut address,
     )
     .unwrap();
-    w.config(&format!("[components.notify-dbus]\nbus = \"{}\"\n", address.trim()));
+    w.config(&format!(
+        "[components.notify-dbus]\nbus = \"{}\"\n",
+        address.trim()
+    ));
     let out = w.run(&["remind"]);
     let _ = daemon.kill();
     let _ = daemon.wait();
-    assert_eq!(out.status.code(), Some(69), "{}", String::from_utf8_lossy(&out.stderr));
+    assert_eq!(
+        out.status.code(),
+        Some(69),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     assert!(out.stdout.is_empty());
     assert!(String::from_utf8_lossy(&out.stderr).contains("发通知失败"));
     // 没发出去就没记：dry-run 里还在

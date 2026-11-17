@@ -1,10 +1,10 @@
 # 实现进度（交接用）
 
-新会话从这里接着做，不要从对话历史重建。最后更新：2026-11-17。
+新会话从这里接着做，不要从对话历史重建。最后更新：2026-11-18。
 
 ## 一句话现状
 
-阶段 0–3b 的代码完成：`stash capture` 记下来源窗口、终端的命令 / 目录 / git、浏览器网址、截图、自定义脚本的输出；输入支持 `=算式`、缩写、`!前缀` 外部改写，以及 `#分类 @日期` URL 语法。`stash-tui` 是整理界面（收件箱 / 待办 / 想法 / 稍后读 / 已完成，j/k 选择、单键操作）。阶段 3、3b 的真机验收要在桌面机上做（见下面清单）。`stash remind` 由 systemd timer 定时运行，收件箱积压、条目到期时发桌面通知（一天一次）。下一步阶段 6：收尾（安装脚本、文档、回写规范）。
+阶段 0–3b 的代码完成：`stash capture` 记下来源窗口、终端的命令 / 目录 / git、浏览器网址、截图、自定义脚本的输出；输入支持 `=算式`、缩写、`!前缀` 外部改写，以及 `#分类 @日期` URL 语法。`stash-tui` 是整理界面（收件箱 / 待办 / 想法 / 稍后读 / 已完成，j/k 选择、单键操作）。阶段 3、3b 的真机验收要在桌面机上做（见下面清单）。`stash remind` 由 systemd timer 定时运行，收件箱积压、条目到期时发桌面通知（一天一次）。阶段 6 收尾完成：`scripts/install.sh`、用户和开发文档（配置文档由测试核对）、niri 快捷键例子、规范回写。剩下的都是桌面机上的真机验收（见「下一步」）。
 
 档位：中等　配套：数据应用、命令行、常驻进程 / 桌面工具（部分）
 
@@ -27,7 +27,7 @@
 | 3b | 更多上下文和展开 | 代码完成；真机验收待桌面机 |
 | 4 | `tui` v2 + 整理界面 | 完成（开发机上用 pty 真实运行过） |
 | 5 | 提醒 | 代码完成；真机收到通知待桌面机 |
-| 6 | 收尾 | 未开始 |
+| 6 | 收尾 | 完成；覆盖率门槛脚本未验证（开发机没有 cargo-llvm-cov） |
 
 ## 已确认的事
 
@@ -122,9 +122,23 @@ mk-kit 全量检查通过。开发机上 `stash ls`、`stash capture --message` 
 1. 装好后 `stash remind --dry-run` 看要发什么，再 `stash remind`，桌面上收到通知（标题、正文、过期时是紧急样式）。
 2. `systemctl --user enable --now stash-remind.timer`，`systemctl --user list-timers` 看下次运行时间；`journalctl --user -u stash-remind` 看日志。
 
+### 阶段 6 做了什么（2026-11-18）
+
+| 仓库 | 提交 | 内容 | 怎么验证的 |
+|---|---|---|---|
+| mk-kit | `0de3a0b` | `crates/config-doc`：配置文档的解析、对照和整份检查 `check()`；arch 认得这个包 | 6 个单元测试（含 `check` 的缺段、未链接、不存在的组件）；`scripts/check.sh` 通过 |
+| lifelog | `a554d94` | `tests/config-doc` 改用共享包（包名改为 `config-doc-test`），去掉不再用的 `toml` | `scripts/check.sh` 通过，0 警告；故意把文档里的 `queue_capacity` 改成 1，检查报出「文档写的是 1，代码里是 1024」 |
+| stash | 见 `git log` | `tests/config-doc` + `docs/configuration.md`（28 个组件）；`docs/{README,installation,usage,architecture}.md`；README 重写；`scripts/install.sh`；`dist/niri-binds.kdl`；`scripts/coverage.sh` + `coverage_gate.py` | `scripts/check.sh` 通过，0 警告，138 个测试；故意改错一个默认值、加一个不存在的键，两处都报出；文档里的配置例子拼成配置文件真实加载（`stash parse` 用上了例子里的缩写和 `#做` 标记）；所有相对链接都存在；`install.sh` 在临时 `CARGO_INSTALL_ROOT`、`XDG_CONFIG_HOME` 下跑通，单元文件里的路径换成了实际位置，`systemd-analyze --user verify` 无报错，装出来的 `stash add / ls / remind --dry-run` 正常；`coverage_gate.py` 用构造的报告测过（不达标的包报出、`apps/` 和 mk-kit 的文件跳过） |
+
+- **未验证**：`scripts/coverage.sh` 真实跑一次。开发机没有 cargo-llvm-cov，安装它的操作被权限拦下。装好之后（`sudo pacman -S cargo-llvm-cov`、`rustup component add llvm-tools-preview`）跑一次，达标再考虑放进 `check.sh`。
+- **补阶段 5 的漏**：阶段 5 的提交里 `tests/e2e/tests/cli.rs` 没有格式化，那次汇报的「`scripts/check.sh` 通过」不成立（格式这一步会失败）。这次一起格式化了。lefthook 没装，所以提交时没拦下；建议 `lefthook install`。
+- **规范回写**（`~/.agents/skills/microkernel-architecture`，下面「对规范的反馈」各条）：`stack-rust.md` 加「共享仓库」「扩展点的声明」「测试」三节；原则 8 加「运行外部命令也走 exec 服务」；原则 4 加终端界面的可操作列表；常驻进程 / 桌面工具配套加「没有常驻进程的桌面工具」一节；数据应用配套加「没有常驻进程时的多写者」；SKILL.md 把 stash 列为第二个参考实现。
+
 **这台开发机没有桌面环境**：所有要 niri / vicinae / 通知的真机验收（阶段 3、3b、4、5）都要在桌面机上做，计划里把它们列成「桌面机验收清单」，开发机上只跑自动测试。
 
 ## 对规范的反馈
+
+以下各条都已在阶段 6 回写到 `microkernel-architecture`（2026-11-18）。
 
 - 测试里「写脚本再 exec」在并行测试中会偶发 `Text file busy`（别的线程 fork 出的子进程带着写句柄）。这类测试要串行。回写到 `references/stack-rust.md` 的测试部分。
 - 应用功能要运行用户配置的外部命令时，通过一个通用的 `exec` 系统服务，而不是自己起进程。回写到原则 8 的例子里。
@@ -142,5 +156,10 @@ mk-kit 全量检查通过。开发机上 `stash ls`、`stash capture --message` 
 
 ## 下一步
 
-1. 阶段 6：`scripts/install.sh`（装 `stash`、`stash-tui`，放 systemd 单元）、README 和配置文档（含 config-doc 检查）、niri 快捷键示例；把「对规范的反馈」回写到 `microkernel-architecture` skill。
-2. 桌面机上：阶段 3、3b 验收清单；lifelog `scripts/install.sh` 后确认 lifelogd 正常。
+都在桌面机上做：
+
+1. `scripts/install.sh`，按 `dist/niri-binds.kdl` 绑快捷键。
+2. 阶段 3、3b、5 的验收清单（上面各阶段下面）。
+3. 在真终端里看一眼 `stash-tui`（布局、颜色、中文宽度）。
+4. lifelog：`scripts/install.sh` 后确认 lifelogd 正常。
+5. 可选：装 cargo-llvm-cov，跑 `scripts/coverage.sh`。
