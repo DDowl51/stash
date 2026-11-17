@@ -16,11 +16,16 @@ boot = { path = "../mk-kit/crates/boot" }
 boot-build = { path = "../mk-kit/crates/boot-build" }
 testkit = { path = "../mk-kit/crates/testkit" }
 
+browser-contract = { path = "../mk-kit/contracts/browser" }
 cli-contract = { path = "../mk-kit/contracts/cli" }
 clock-contract = { path = "../mk-kit/contracts/clock" }
+exec-contract = { path = "../mk-kit/contracts/exec" }
 log-contract = { path = "../mk-kit/contracts/log" }
+process-contract = { path = "../mk-kit/contracts/process" }
 prompt-contract = { path = "../mk-kit/contracts/prompt" }
+screenshot-contract = { path = "../mk-kit/contracts/screenshot" }
 sql-contract = { path = "../mk-kit/contracts/sql" }
+vcs-contract = { path = "../mk-kit/contracts/vcs" }
 window-contract = { path = "../mk-kit/contracts/window" }
 
 items-contracts = { path = "features/items/contracts" }
@@ -30,12 +35,32 @@ capture-contracts = { path = "features/capture/contracts" }
 capture-core = { path = "features/capture/core" }
 capture = { path = "features/capture/component" }
 context-window = { path = "features/context-window/component" }
+context-terminal-core = { path = "features/context-terminal/core" }
+context-terminal = { path = "features/context-terminal/component" }
+context-browser-core = { path = "features/context-browser/core" }
+context-browser = { path = "features/context-browser/component" }
+context-screenshot = { path = "features/context-screenshot/component" }
+context-script-core = { path = "features/context-script/core" }
+context-script = { path = "features/context-script/component" }
+expand-calc-core = { path = "features/expand-calc/core" }
+expand-calc = { path = "features/expand-calc/component" }
+expand-snippets = { path = "features/expand-snippets/component" }
+expand-script-core = { path = "features/expand-script/core" }
+expand-script = { path = "features/expand-script/component" }
 
+browser-chromium = { path = "../mk-kit/services/browser-chromium" }
+browser-firefox = { path = "../mk-kit/services/browser-firefox" }
+browser-history = { path = "../mk-kit/services/browser-history" }
+browser-qutebrowser = { path = "../mk-kit/services/browser-qutebrowser" }
 cli-clap = { path = "../mk-kit/services/cli-clap" }
 clock-system = { path = "../mk-kit/services/clock-system" }
+exec-tokio = { path = "../mk-kit/services/exec-tokio" }
 log-stderr = { path = "../mk-kit/services/log-stderr" }
+process-procfs = { path = "../mk-kit/services/process-procfs" }
 prompt-vicinae = { path = "../mk-kit/services/prompt-vicinae" }
+screenshot-niri = { path = "../mk-kit/services/screenshot-niri" }
 storage-sqlite = { path = "../mk-kit/services/storage-sqlite" }
+vcs-git = { path = "../mk-kit/services/vcs-git" }
 wm-niri = { path = "../mk-kit/services/wm-niri" }
 
 getrandom = "0.3"

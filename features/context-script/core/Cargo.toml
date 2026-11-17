@@ -1,0 +1,20 @@
+[package]
+name = "context-script-core"
+description = "context-script 的纯逻辑：给脚本的环境变量、脚本输出怎么变成上下文。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+kernel-api.workspace = true
+capture-contracts.workspace = true
+jiff.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+capture-contracts = { workspace = true, features = ["testing"] }
+
+[lints]
+workspace = true

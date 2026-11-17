@@ -13,15 +13,32 @@ cli-contract.workspace = true
 serde_json.workspace = true
 
 # 这个进程里的组件。加一行就多装一个，不用改代码。
-capture.workspace = true
+# 系统服务
+browser-chromium.workspace = true
+browser-firefox.workspace = true
+browser-history.workspace = true
+browser-qutebrowser.workspace = true
 cli-clap.workspace = true
 clock-system.workspace = true
-context-window.workspace = true
-items.workspace = true
+exec-tokio.workspace = true
 log-stderr.workspace = true
+process-procfs.workspace = true
 prompt-vicinae.workspace = true
+screenshot-niri.workspace = true
 storage-sqlite.workspace = true
+vcs-git.workspace = true
 wm-niri.workspace = true
+# 应用功能
+capture.workspace = true
+context-browser.workspace = true
+context-screenshot.workspace = true
+context-script.workspace = true
+context-terminal.workspace = true
+context-window.workspace = true
+expand-calc.workspace = true
+expand-script.workspace = true
+expand-snippets.workspace = true
+items.workspace = true
 
 [build-dependencies]
 boot-build.workspace = true

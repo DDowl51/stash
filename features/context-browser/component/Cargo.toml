@@ -1,0 +1,25 @@
+[package]
+name = "context-browser"
+description = "应用功能：来源是浏览器时，记下当时在看的网页（标题和网址）。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[package.metadata.component]
+id = "context-browser"
+
+[dependencies]
+kernel-api.workspace = true
+capture-contracts.workspace = true
+context-browser-core.workspace = true
+browser-contract.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+capture-contracts = { workspace = true, features = ["testing"] }
+browser-contract = { workspace = true, features = ["testing"] }
+tokio.workspace = true
+
+[lints]
+workspace = true

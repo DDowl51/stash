@@ -33,13 +33,22 @@ fn bin() -> &'static Path {
     })
 }
 
+/// 测试一个一个跑：有的测试写假脚本再让 stash 去执行，别的测试同时 fork 出的子进程会带着
+/// 写句柄，exec 时报「Text file busy」。
+static SERIAL: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 struct World {
     dir: tempfile::TempDir,
+    _serial: std::sync::MutexGuard<'static, ()>,
 }
 
 impl World {
     fn new() -> Self {
         Self {
+            // 别的测试失败（锁被污染）不影响这个
+            _serial: SERIAL
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
             dir: tempfile::tempdir().unwrap(),
         }
     }
@@ -81,12 +90,17 @@ impl World {
     }
 
     /// 一个假的 vicinae：执行 `body`。返回它的路径。
-    fn fake_vicinae(&self, body: &str) -> PathBuf {
+    /// 一个假程序（shell 脚本）：执行 `body`。返回它的路径。
+    fn fake(&self, name: &str, body: &str) -> PathBuf {
         use std::os::unix::fs::PermissionsExt;
-        let path = self.dir.path().join("vicinae");
+        let path = self.dir.path().join(name);
         std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
         path
+    }
+
+    fn fake_vicinae(&self, body: &str) -> PathBuf {
+        self.fake("vicinae", body)
     }
 
     fn json_lines(&self, args: &[&str]) -> Vec<Value> {
@@ -272,9 +286,25 @@ fn capture_records_the_window_it_came_from() {
     let socket = w.dir.path().join("niri.sock");
     fake_niri(&socket);
     let vicinae = w.fake_vicinae("cat > /dev/null; echo '看下这个 PR'");
+    // 截图用的 niri 命令行、剪贴板工具也是假的：剪贴板是空的，截图写一个 PNG
+    let niri = w.fake(
+        "niri",
+        r#"case "$*" in
+  "msg -j windows") echo '[{"id":9}]' ;;
+  "msg action screenshot-window"*)
+    while [ $# -gt 0 ]; do [ "$1" = --path ] && p="$2"; shift; done
+    printf '\211PNG\r\n\032\nfake' > "$p" ;;
+esac"#,
+    );
+    let wl_paste = w.fake("wl-paste", "exit 1");
+    let wl_copy = w.fake("wl-copy", "cat > /dev/null");
     w.config(&format!(
-        "[components.prompt-vicinae]\ncommand = \"{}\"\n",
-        vicinae.display()
+        "[components.prompt-vicinae]\ncommand = \"{}\"\n\
+         [components.screenshot-niri]\nniri = \"{}\"\nwl_paste = \"{}\"\nwl_copy = \"{}\"\n",
+        vicinae.display(),
+        niri.display(),
+        wl_paste.display(),
+        wl_copy.display()
     ));
     let out = w
         .cmd(&["capture"])
@@ -288,6 +318,8 @@ fn capture_records_the_window_it_came_from() {
     );
     let it: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(it["source"], "zen · PR #12 — Zen Browser");
+    let id = it["id"].as_str().unwrap();
+    let shot = w.dir.path().join(format!("data/stash/shots/{id}.png"));
     let context: Vec<(String, String)> = it["context"]
         .as_array()
         .unwrap()
@@ -304,19 +336,37 @@ fn capture_records_the_window_it_came_from() {
         .map(|(k, v)| (k.as_str(), v.as_str()))
         .collect();
     assert_eq!(
-        pairs,
+        pairs[..6],
         [
             ("window.app", "zen"),
             ("window.title", "PR #12 — Zen Browser"),
             ("window.workspace", "web"),
             ("window.pid", "4321"),
+            // 这个环境里没有 zen 的历史：只记标题并说明
+            ("browser.title", "PR #12"),
+            (
+                "browser.note",
+                "最近 30 分钟的 zen 历史里没找到这个标题，只记了标题"
+            ),
         ]
     );
+    assert_eq!(pairs[6], ("screenshot.window", shot.to_str().unwrap()));
+    assert!(std::fs::read(&shot).unwrap().starts_with(b"\x89PNG"));
     // show 里看得到
-    let id = it["id"].as_str().unwrap();
     let shown = w.ok(&["--text", "show", &id[id.len() - 6..]]);
     assert!(
         shown.contains("来源  zen · PR #12") && shown.contains("工作区  web"),
         "{shown}"
     );
+
+    // Esc：刚截的图也删掉
+    w.fake_vicinae("cat > /dev/null; exit 1");
+    let out = w
+        .cmd(&["capture"])
+        .env("NIRI_SOCKET", &socket)
+        .output()
+        .unwrap();
+    assert!(out.status.success() && out.stdout.is_empty());
+    let shots: Vec<_> = std::fs::read_dir(shot.parent().unwrap()).unwrap().collect();
+    assert_eq!(shots.len(), 1, "只剩第一次的截图");
 }

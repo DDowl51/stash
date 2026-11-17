@@ -94,12 +94,52 @@ contract! {
 pub mod testing {
     //! 契约测试：任何提供者 / 展开器都要通过。
 
-    use std::sync::Arc;
+    use std::sync::{Arc, OnceLock};
 
     use clock_contract::Moment;
-    use kernel_api::AppError;
+    use kernel_api::{AppError, Collector, Component, ConfigSection, Host, Kind, Manifest};
 
-    use super::{ContextProvider, Draft, Expander, SOURCE_KEY, Snapshot, WindowInfo};
+    use super::{
+        CAPTURE_CONTEXT, CAPTURE_EXPANDERS, ContextProvider, Draft, Expander, SOURCE_KEY, Snapshot,
+        WindowInfo,
+    };
+
+    /// 组件 `capture-probe`：两个扩展点的假所有者。登记方的启动测试里用它代替 `capture`，
+    /// 并取出登记上来的实现。克隆出来的是同一个。
+    #[derive(Clone, Default)]
+    pub struct CaptureProbe {
+        context: Arc<OnceLock<Collector<dyn ContextProvider>>>,
+        expanders: Arc<OnceLock<Collector<dyn Expander>>>,
+    }
+
+    impl CaptureProbe {
+        pub fn providers(&self) -> Vec<Arc<dyn ContextProvider>> {
+            self.context.get().map(Collector::all).unwrap_or_default()
+        }
+
+        pub fn expanders(&self) -> Vec<Arc<dyn Expander>> {
+            self.expanders.get().map(Collector::all).unwrap_or_default()
+        }
+    }
+
+    impl Component for CaptureProbe {
+        fn manifest(&self) -> Manifest {
+            Manifest {
+                id: "capture-probe",
+                kind: Kind::Feature,
+                summary: "测试用：capture 两个扩展点的假所有者",
+                provides: vec![CAPTURE_CONTEXT.id(), CAPTURE_EXPANDERS.id()],
+                requires: vec![],
+                optional_requires: vec![],
+            }
+        }
+
+        fn start(&self, _config: &ConfigSection, host: &mut Host<'_>) -> Result<(), AppError> {
+            let _ = self.context.set(host.collector(&CAPTURE_CONTEXT)?);
+            let _ = self.expanders.set(host.collector(&CAPTURE_EXPANDERS)?);
+            Ok(())
+        }
+    }
 
     fn check(ok: bool, what: &str) -> Result<(), AppError> {
         if ok {

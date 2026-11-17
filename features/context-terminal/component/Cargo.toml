@@ -1,0 +1,25 @@
+[package]
+name = "context-terminal"
+description = "应用功能：来源是终端时，记下前台命令、工作目录和 git 仓库。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[package.metadata.component]
+id = "context-terminal"
+
+[dependencies]
+kernel-api.workspace = true
+capture-contracts.workspace = true
+context-terminal-core.workspace = true
+process-contract.workspace = true
+vcs-contract.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+capture-contracts = { workspace = true, features = ["testing"] }
+tokio.workspace = true
+
+[lints]
+workspace = true

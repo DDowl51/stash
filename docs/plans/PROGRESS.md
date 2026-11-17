@@ -4,7 +4,7 @@
 
 ## 一句话现状
 
-阶段 0–3 的代码完成：`stash capture`（vicinae 输入框 + 来源窗口）、`stash add / parse`（`#分类 @日期` URL 语法）、`ls / show / move / done / …` 都能用。阶段 3 的真机验收要在桌面机上做（见下面清单）。下一步阶段 3b：更多上下文（终端、浏览器、截图、脚本）和展开器。
+阶段 0–3b 的代码完成：`stash capture` 记下来源窗口、终端的命令 / 目录 / git、浏览器网址、截图、自定义脚本的输出；输入支持 `=算式`、缩写、`!前缀` 外部改写，以及 `#分类 @日期` URL 语法。阶段 3、3b 的真机验收要在桌面机上做（见下面清单）。下一步阶段 4：终端整理界面。
 
 档位：中等　配套：数据应用、命令行、常驻进程 / 桌面工具（部分）
 
@@ -24,7 +24,7 @@
 | 1 | stash 脚手架 | 完成 |
 | 2 | `items` + 命令行 | 完成 |
 | 3 | 快速记录（窗口上下文） | 代码完成；真机验收待桌面机 |
-| 3b | 更多上下文和展开 | 未开始 |
+| 3b | 更多上下文和展开 | 代码完成；真机验收待桌面机 |
 | 4 | `tui` v2 + 整理界面 | 未开始 |
 | 5 | 提醒 | 未开始 |
 | 6 | 收尾 | 未开始 |
@@ -81,9 +81,34 @@ mk-kit 全量 167 个测试通过。
 4. 量从按键到输入框出现的时间（目标 300 ms 以内）。
 5. `Mod+Shift+T { spawn "stash" "capture" "--kind" "todo"; }`：提示里显示「→ 待办」。
 
+### 阶段 3b 做了什么（2026-11-17）
+
+| 仓库 | 提交 | 内容 | 怎么验证的 |
+|---|---|---|---|
+| mk-kit | `c4904ac` | `browser` 契约 v2：`recent`；三个适配按时间列查 | 契约测试加了 `recent` 的用例，三个适配和内存假实现都通过 |
+| mk-kit | `727d4ab` | `process` 契约 + `process-procfs`；`vcs` 契约 + `vcs-git` | procfs 用测试进程自己跑契约测试；git 在临时仓库里跑（干净、有改动、子目录、非仓库、detached、空仓库） |
+| mk-kit | `3b5b5de` | `screenshot` 契约 + `screenshot-niri`（存下并恢复剪贴板） | 假 niri / wl-paste / wl-copy 脚本：契约测试、剪贴板恢复、原来为空时清掉、关掉恢复、文件不出现、niri 不在 |
+| mk-kit | `b678fcf` | `exec` 契约 + `exec-tokio` | 契约测试：stdin、环境变量、stderr、退出码、超时杀掉、起不来、空命令 |
+| lifelog | — | 不用改 | `scripts/check.sh` 通过（284） |
+| stash | 见 `git log` | `context-terminal`、`context-browser`、`context-screenshot`、`context-script`、`expand-calc`、`expand-snippets`、`expand-script`（有纯逻辑的各带 `core`）；启动器装上全部；`CaptureProbe` | `scripts/check.sh` 通过，0 警告，108 个测试；e2e 用假 niri（socket + 命令）、假 vicinae、假剪贴板跑真实进程：来源窗口、浏览器标题、截图文件都进了条目，Esc 删掉截图 |
+
+mk-kit 全量检查通过。开发机上 `stash ls`、`stash capture --message` 的进程耗时 3–4 ms（release 和 debug 差不多）。
+在开发机的真实进程树（herdr → fish → claude）上核对了 `context-terminal` 的判断依据：shell 是有控制终端的会话首进程，前台命令是终端前台进程组的组长。
+
+**桌面机验收清单（阶段 3b，未验证）**：
+1. 从 ghostty 里正在跑 nvim 的窗口记一条：`stash show` 有前台命令、目录、仓库、分支，列表里来源是「ghostty · ~/… (分支)」。开多个标签页时看取的是不是当前那个。
+2. 从 Zen、Chrome、qutebrowser 各记一条：有网页标题和网址。核对各自的 app_id 和标题后缀（不对就改 `context-browser.apps`）。
+3. 截图：`~/.local/share/stash/shots/<id>.png` 是来源窗口；**截图前后剪贴板内容不变**；niri 写剪贴板和我们恢复的先后有没有竞态。
+4. Esc 后截图被删掉。
+5. 配一个 `context-script`（比如 `lifelog`）和一个 `expand-script`，看输出进了条目。
+6. 从按键到输入框出现的时间（截图在弹框之前做，最多等 300 ms）。
+
 **这台开发机没有桌面环境**：所有要 niri / vicinae / 通知的真机验收（阶段 3、3b、4、5）都要在桌面机上做，计划里把它们列成「桌面机验收清单」，开发机上只跑自动测试。
 
 ## 对规范的反馈
+
+- 测试里「写脚本再 exec」在并行测试中会偶发 `Text file busy`（别的线程 fork 出的子进程带着写句柄）。这类测试要串行。回写到 `references/stack-rust.md` 的测试部分。
+- 应用功能要运行用户配置的外部命令时，通过一个通用的 `exec` 系统服务，而不是自己起进程。回写到原则 8 的例子里。
 
 - 扩展点的收集方要把扩展点写进自己的 `provides`（不写的话 kernel 报「不是自己 provides 里的扩展点」），登记方写进 `requires`。规范里没说清，阶段 6 回写。
 - 一次性命令行进程用「靠事件流维护状态」的系统服务时，状态在启动瞬间是空的；这类服务要有「还没同步就直接查询」的路径。回写到常驻进程 / 桌面工具配套。
@@ -98,5 +123,5 @@ mk-kit 全量 167 个测试通过。
 
 ## 下一步
 
-1. 阶段 3b：mk-kit 加 `process`（procfs）、`vcs`（git）、`screenshot`（niri）契约和服务，`browser.history` 加 `recent`；stash 加 `context-terminal`、`context-browser`、`context-screenshot`、`context-script`、`expand-calc`、`expand-snippets`、`expand-script`。
-2. 桌面机上：阶段 3 验收清单；lifelog `scripts/install.sh` 后确认 lifelogd 正常。
+1. 阶段 4：mk-kit 的 `tui` 契约升到 v2（可选中的行、按键操作）、`tui-ratatui` 跟上；stash 加 `review` 和 `stash-tui` 启动器（设计 §6）。
+2. 桌面机上：阶段 3、3b 验收清单；lifelog `scripts/install.sh` 后确认 lifelogd 正常。

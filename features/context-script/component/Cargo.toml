@@ -1,0 +1,27 @@
+[package]
+name = "context-script"
+description = "应用功能：记录时运行配置里的外部命令，把它的输出记成上下文。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[package.metadata.component]
+id = "context-script"
+
+[dependencies]
+kernel-api.workspace = true
+capture-contracts.workspace = true
+context-script-core.workspace = true
+exec-contract.workspace = true
+serde.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+capture-contracts = { workspace = true, features = ["testing"] }
+exec-contract = { workspace = true, features = ["testing"] }
+testkit.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

@@ -15,21 +15,18 @@ const NAME: &str = "stash";
 
 async fn run(app: &App, argv: Vec<String>) -> Result<u8, AppError> {
     let running = boot::start(app, |settings| {
-        // 存储服务不认识 stash，数据库默认放哪由启动器告诉它（配置文件里写了 path 就以配置为准）
-        settings.set_default(
-            "storage-sqlite",
-            "path",
-            serde_json::Value::String(
-                boot::data_dir("stash")
-                    .join("stash.db")
-                    .to_string_lossy()
-                    .into_owned(),
-            ),
-        );
-        // 不在 niri 会话里（ssh、纯终端）时窗口服务起不来；stash 照样要能用，
-        // 所以没有 NIRI_SOCKET 时默认停用它（配置文件里明确写了 enabled 就以配置为准）
+        let data = boot::data_dir("stash");
+        let path =
+            |p: std::path::PathBuf| serde_json::Value::String(p.to_string_lossy().into_owned());
+        // 系统服务不认识 stash：放在哪由启动器告诉它们（配置文件里写了就以配置为准）
+        settings.set_default("storage-sqlite", "path", path(data.join("stash.db")));
+        settings.set_default("context-screenshot", "dir", path(data.join("shots")));
+        // 不在 niri 会话里（ssh、纯终端）时窗口和截图服务都用不了；stash 照样要能用，
+        // 所以没有 NIRI_SOCKET 时默认停用它们，以及依赖截图的上下文
         if std::env::var_os("NIRI_SOCKET").is_none_or(|s| s.is_empty()) {
-            settings.set_default("wm-niri", "enabled", serde_json::Value::Bool(false));
+            for id in ["wm-niri", "screenshot-niri", "context-screenshot"] {
+                settings.set_default(id, "enabled", serde_json::Value::Bool(false));
+            }
         }
     })
     .await?;
@@ -85,14 +82,29 @@ mod tests {
         assert_eq!(
             LINKED_COMPONENTS,
             [
+                "browser-chromium",
+                "browser-firefox",
+                "browser-history",
+                "browser-qutebrowser",
                 "capture",
                 "cli-clap",
                 "clock-system",
+                "context-browser",
+                "context-screenshot",
+                "context-script",
+                "context-terminal",
                 "context-window",
+                "exec-tokio",
+                "expand-calc",
+                "expand-script",
+                "expand-snippets",
                 "items",
                 "log-stderr",
+                "process-procfs",
                 "prompt-vicinae",
+                "screenshot-niri",
                 "storage-sqlite",
+                "vcs-git",
                 "wm-niri"
             ]
         );

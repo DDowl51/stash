@@ -258,16 +258,17 @@ inbox = ["inbox", "in"]
 apps = ["com.mitchellh.ghostty", "kitty", "foot", "Alacritty"]   # 哪些 app_id 算终端
 
 [components.context-browser]
-# app_id → 历史来源的浏览器名 + 从窗口标题里去掉的后缀（正则）
+lookback_minutes = 30               # 往回找多久的历史
+
+# app_id → 历史来源的浏览器名 + 窗口标题末尾的浏览器后缀（按顺序试，去掉第一个匹配的）
 [components.context-browser.apps]
-zen = { browser = "zen", title_suffix = " — Zen Browser$" }
-google-chrome = { browser = "chrome", title_suffix = " - Google Chrome$" }
-"org.qutebrowser.qutebrowser" = { browser = "qutebrowser", title_suffix = " - qutebrowser$" }
-lookback_minutes = 30
+zen = { browser = "zen", title_suffixes = [" — Zen Browser", " - Zen Browser"] }
+google-chrome = { browser = "chrome", title_suffixes = [" - Google Chrome"] }
+"org.qutebrowser.qutebrowser" = { browser = "qutebrowser", title_suffixes = [" - qutebrowser"] }
 
 [components.context-screenshot]
 enabled = true
-dir = "~/.local/share/stash/shots"
+dir = "/home/me/.local/share/stash/shots"   # 绝对路径；不写时启动器给 $XDG_DATA_HOME/stash/shots
 skip_apps = []                      # 这些应用不截图（比如密码管理器）
 
 [[components.context-script.scripts]]
@@ -529,6 +530,13 @@ binds {
 | `prompt` 契约测试 | 契约测试 | `prompt_contract(make)`：`make` 按「用户怎么操作」造一个输入框；vicinae 用假脚本 | 输入框是交互的，契约测试只能描述场景 |
 | `@日期` 的周几 | — | `@周五` 指今天之后最近的周五（不含今天）；`@下周五` 指下一个自然周里的；另认 `3天后`、`+3`、`11/20`、`11月20日` | 今天用 `@今天` |
 | URL 识别 | — | `http(s)://` 开头的词，到第一个非 ASCII 字符为止，去掉末尾英文标点 | 中文里 URL 后面常直接接字 |
+| 运行外部命令 | `context-script`、`expand-script` 不需要契约，自己起进程 | mk-kit 新增 `exec` 契约和 `exec-tokio`（`b678fcf`），两个组件通过它运行命令 | 应用功能不直接做 IO；也让测试能用假的 `FakeExec` |
+| `screenshot` 契约 | `window(id, path)`；删除截图靠 `files` | 加 `remove(path)`；`context-screenshot` 不依赖 `files` | `files` 只管根目录下的文本文件；图是谁截的就由谁删 |
+| `context-browser` 的后缀 | 一个正则 `title_suffix` | 一组纯文本后缀 `title_suffixes`，按顺序去掉第一个匹配的；比较标题时去掉开头的未读数 `(3) ` | 后缀都是固定文字，不值得为它引入正则；同一个浏览器有好几种写法 |
+| `context-terminal` 找 shell | 窗口 pid → 最深的前台进程 | 终端下面「有控制终端的会话首进程」是 shell，有好几个时取最晚启动的；前台命令是该终端前台进程组的组长 | 拿不到「当前是哪个标签页」；在开发机的真实进程树上核对过判断依据，多标签页的取舍待桌面机核对 |
+| `context-script` 的环境变量 | `STASH_APP_ID`、`STASH_TITLE`、`STASH_PID`、`STASH_WORKSPACE`、`STASH_AT` | 另加 `STASH_ITEM_ID`、`STASH_AT_MS`、`STASH_WINDOW_ID`；`STASH_AT` 是带时区的 RFC 3339；没有的值给空字符串；key 加前缀 `script.<name>.` | 脚本不用判断变量在不在；上下文的 key 要能看出是谁给的 |
+| 不在 niri 会话里 | 启动器停用 `wm-niri` | 同时停用 `screenshot-niri` 和 `context-screenshot` | 截图也要 niri；`context-screenshot` 依赖截图服务，只停一个会启动失败 |
+| `capture` 扩展点的测试 | 假的 capture 宿主 | `capture-contracts` 的 `testing` 里有 `CaptureProbe`（两个扩展点的假所有者）、`context_contract`、`expander_contract` | 登记方的启动测试要有扩展点的所有者，否则配置错误来自缺依赖，测不到自己的配置检查 |
 
 ## 12. 以后
 

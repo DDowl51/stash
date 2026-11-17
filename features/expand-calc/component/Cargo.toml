@@ -1,0 +1,22 @@
+[package]
+name = "expand-calc"
+description = "应用功能：把输入里的 =算式 换成结果。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[package.metadata.component]
+id = "expand-calc"
+
+[dependencies]
+kernel-api.workspace = true
+capture-contracts.workspace = true
+expand-calc-core.workspace = true
+
+[dev-dependencies]
+capture-contracts = { workspace = true, features = ["testing"] }
+tokio.workspace = true
+
+[lints]
+workspace = true

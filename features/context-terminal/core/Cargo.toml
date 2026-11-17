@@ -1,0 +1,13 @@
+[package]
+name = "context-terminal-core"
+description = "context-terminal 的纯逻辑：在终端的进程树里找当前 shell 和前台命令。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+process-contract.workspace = true
+
+[lints]
+workspace = true

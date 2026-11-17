@@ -62,6 +62,60 @@ dependencies = [
 ]
 
 [[package]]
+name = "browser-chromium"
+version = "0.1.0"
+dependencies = [
+ "browser-contract",
+ "kernel-api",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "browser-contract"
+version = "0.1.0"
+dependencies = [
+ "kernel-api",
+ "serde",
+]
+
+[[package]]
+name = "browser-firefox"
+version = "0.1.0"
+dependencies = [
+ "browser-contract",
+ "kernel-api",
+ "rusqlite",
+ "serde",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "browser-history"
+version = "0.1.0"
+dependencies = [
+ "browser-contract",
+ "kernel-api",
+ "log-contract",
+]
+
+[[package]]
+name = "browser-qutebrowser"
+version = "0.1.0"
+dependencies = [
+ "browser-contract",
+ "kernel-api",
+ "rusqlite",
+ "serde",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.20.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -195,6 +249,83 @@ dependencies = [
 ]
 
 [[package]]
+name = "context-browser"
+version = "0.1.0"
+dependencies = [
+ "browser-contract",
+ "capture-contracts",
+ "context-browser-core",
+ "kernel-api",
+ "serde",
+ "tokio",
+]
+
+[[package]]
+name = "context-browser-core"
+version = "0.1.0"
+dependencies = [
+ "browser-contract",
+]
+
+[[package]]
+name = "context-screenshot"
+version = "0.1.0"
+dependencies = [
+ "capture-contracts",
+ "kernel-api",
+ "screenshot-contract",
+ "serde",
+ "serde_json",
+ "testkit",
+ "tokio",
+]
+
+[[package]]
+name = "context-script"
+version = "0.1.0"
+dependencies = [
+ "capture-contracts",
+ "context-script-core",
+ "exec-contract",
+ "kernel-api",
+ "serde",
+ "serde_json",
+ "testkit",
+ "tokio",
+]
+
+[[package]]
+name = "context-script-core"
+version = "0.1.0"
+dependencies = [
+ "capture-contracts",
+ "jiff",
+ "kernel-api",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "context-terminal"
+version = "0.1.0"
+dependencies = [
+ "capture-contracts",
+ "context-terminal-core",
+ "kernel-api",
+ "process-contract",
+ "serde",
+ "tokio",
+ "vcs-contract",
+]
+
+[[package]]
+name = "context-terminal-core"
+version = "0.1.0"
+dependencies = [
+ "process-contract",
+]
+
+[[package]]
 name = "context-window"
 version = "0.1.0"
 dependencies = [
@@ -254,6 +385,71 @@ checksum = "e35d6e78f4cebb90e51d543db8fe41528851d6deeef6ef21ebd4bfdc1e784776"
 dependencies = [
  "libc",
  "windows-sys",
+]
+
+[[package]]
+name = "exec-contract"
+version = "0.1.0"
+dependencies = [
+ "kernel-api",
+ "serde",
+]
+
+[[package]]
+name = "exec-tokio"
+version = "0.1.0"
+dependencies = [
+ "exec-contract",
+ "kernel-api",
+ "tokio",
+]
+
+[[package]]
+name = "expand-calc"
+version = "0.1.0"
+dependencies = [
+ "capture-contracts",
+ "expand-calc-core",
+ "kernel-api",
+ "tokio",
+]
+
+[[package]]
+name = "expand-calc-core"
+version = "0.1.0"
+
+[[package]]
+name = "expand-script"
+version = "0.1.0"
+dependencies = [
+ "capture-contracts",
+ "exec-contract",
+ "expand-script-core",
+ "kernel-api",
+ "serde",
+ "serde_json",
+ "testkit",
+ "tokio",
+]
+
+[[package]]
+name = "expand-script-core"
+version = "0.1.0"
+dependencies = [
+ "capture-contracts",
+ "serde_json",
+]
+
+[[package]]
+name = "expand-snippets"
+version = "0.1.0"
+dependencies = [
+ "capture-contracts",
+ "kernel-api",
+ "serde",
+ "serde_json",
+ "testkit",
+ "tokio",
 ]
 
 [[package]]
@@ -616,6 +812,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "process-contract"
+version = "0.1.0"
+dependencies = [
+ "kernel-api",
+ "serde",
+]
+
+[[package]]
+name = "process-procfs"
+version = "0.1.0"
+dependencies = [
+ "kernel-api",
+ "process-contract",
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "prompt-contract"
 version = "0.1.0"
 dependencies = [
@@ -691,6 +905,25 @@ name = "rustversion"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
+
+[[package]]
+name = "screenshot-contract"
+version = "0.1.0"
+dependencies = [
+ "kernel-api",
+ "serde",
+]
+
+[[package]]
+name = "screenshot-niri"
+version = "0.1.0"
+dependencies = [
+ "kernel-api",
+ "screenshot-contract",
+ "serde",
+ "serde_json",
+ "tokio",
+]
 
 [[package]]
 name = "serde"
@@ -819,17 +1052,32 @@ version = "0.1.0"
 dependencies = [
  "boot",
  "boot-build",
+ "browser-chromium",
+ "browser-firefox",
+ "browser-history",
+ "browser-qutebrowser",
  "capture",
  "cli-clap",
  "cli-contract",
  "clock-system",
+ "context-browser",
+ "context-screenshot",
+ "context-script",
+ "context-terminal",
  "context-window",
+ "exec-tokio",
+ "expand-calc",
+ "expand-script",
+ "expand-snippets",
  "items",
  "kernel-api",
  "log-stderr",
+ "process-procfs",
  "prompt-vicinae",
+ "screenshot-niri",
  "serde_json",
  "storage-sqlite",
+ "vcs-git",
  "wm-niri",
 ]
 
@@ -1020,6 +1268,24 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "vcs-contract"
+version = "0.1.0"
+dependencies = [
+ "kernel-api",
+ "serde",
+]
+
+[[package]]
+name = "vcs-git"
+version = "0.1.0"
+dependencies = [
+ "kernel-api",
+ "serde",
+ "tokio",
+ "vcs-contract",
+]
 
 [[package]]
 name = "version_check"
