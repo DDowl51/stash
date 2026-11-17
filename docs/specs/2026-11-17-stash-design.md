@@ -408,12 +408,13 @@ v1 的提供者：
 ```
 stash capture [--kind todo|idea|read|inbox] [--text <文字>]   # 弹输入框；--text 时不弹
 stash parse --text <文字>                                      # 只展开和解析，不保存
-stash item show <id>                                           # 条目和全部上下文
-stash item add <文字>                                          # 和 capture 同样的语法，不弹框
-stash item list [--kind …] [--status …] [--due today|week|overdue]
-stash item move <id> <kind>
-stash item done <id> | archive <id> | rm <id>
-stash item due <id> <日期|none>
+stash add <文字> [--kind …] [--due YYYY-MM-DD]                # 不弹框（阶段 3 起和 capture 同样的语法）
+stash ls [--kind …] [--status …] [--due today|week|overdue] [--limit N]
+stash show <id>
+stash move <id> <kind>
+stash done <id> | archive <id> | reopen <id> | rm <id>
+stash due <id> <日期|none>
+stash edit <id> <文字>
 stash remind [--dry-run]                                       # 给 systemd timer 用
 ```
 
@@ -513,6 +514,12 @@ binds {
 | 浏览器适配搬家时机 | 阶段 3b 再搬到 mk-kit | 阶段 0 就一起搬了 | 依赖封闭，一次搬完少一轮 lifelog 改动 |
 | `boot-build` | 只扫本仓库的 `services/`、`features/` | 也收 `[workspace.dependencies]` 里 path 指向仓库外的组件包（mk-kit `b5d2bff`） | 否则共享仓库里的组件在使用方是「未知组件」，配置文档检查失败 |
 | 架构检查 | 复用共享仓库的规则 | mk-kit 和 lifelog 各有一份 `tests/arch`（内容相同），仓库外的包按它所在 workspace 的根判断角色 | 规则库还没拆成可依赖的包；stash 先复制一份，三份对不上时再抽 |
+
+| 共享服务里的应用路径 | （没想到） | mk-kit 的 `storage-sqlite`、`files-std` 原来默认写 lifelog 的路径；改成没配置就报错，默认值由启动器用 `boot::set_default` + `boot::data_dir` 给（mk-kit `5544d37`） | 系统服务里不能有具体应用的名字；否则 stash 会写进 lifelog 的库 |
+| 命令行形状 | `stash item add / list / move …`（名词 动词） | 扁平：`stash add / ls / show / move / done / archive / reopen / rm / due / edit` | cli-clap 只支持一层子命令；stash 只有「条目」一个名词，扁平更短，不用改 mk-kit 的命令行契约 |
+| 从 stdin 读 id | 命令行配套：ID 能从 stdin 读 | 暂不支持 | cli-clap 还没有这个能力；等真的需要批量操作时在 cli-clap 里加 |
+| 参数名 | — | 不能用 `json`、`text`、`color`、`trace`、`config`、`help`；`add`、`edit` 的文字参数叫 `words` | 和全局选项撞名时 cli-clap 会崩溃；e2e 测试发现，cli-clap 已改成登记时报配置错误（mk-kit 本次提交） |
+| `stash add` 的语法 | 和 `capture` 同样的语法（`#分类`、`@日期`、URL） | 阶段 2 只存原文，`--kind`、`--due` 走参数 | 解析在 `capture` 里，阶段 3 做完后 `add` 也走同一套 |
 
 ## 12. 以后
 

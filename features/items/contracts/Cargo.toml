@@ -1,0 +1,18 @@
+[package]
+name = "items-contracts"
+description = "items 对外的契约：条目的读写和变更事件。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[features]
+# 契约测试，给实现和别的包的测试用。
+testing = []
+
+[dependencies]
+kernel-api.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

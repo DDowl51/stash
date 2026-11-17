@@ -14,7 +14,20 @@ include!(concat!(env!("OUT_DIR"), "/components.rs"));
 const NAME: &str = "stash";
 
 async fn run(app: &App, argv: Vec<String>) -> Result<u8, AppError> {
-    let running = boot::start(app, |_| {}).await?;
+    let running = boot::start(app, |settings| {
+        // 存储服务不认识 stash，数据库默认放哪由启动器告诉它（配置文件里写了 path 就以配置为准）
+        settings.set_default(
+            "storage-sqlite",
+            "path",
+            serde_json::Value::String(
+                boot::data_dir("stash")
+                    .join("stash.db")
+                    .to_string_lossy()
+                    .into_owned(),
+            ),
+        );
+    })
+    .await?;
     let code = match running.resolve(&CLI) {
         Ok(cli) => cli.run(argv).await,
         Err(e) => Err(e),
@@ -66,7 +79,13 @@ mod tests {
         assert_eq!(registered, LINKED_COMPONENTS);
         assert_eq!(
             LINKED_COMPONENTS,
-            ["cli-clap", "clock-system", "log-stderr"]
+            [
+                "cli-clap",
+                "clock-system",
+                "items",
+                "log-stderr",
+                "storage-sqlite"
+            ]
         );
     }
 }

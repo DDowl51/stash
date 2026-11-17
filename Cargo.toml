@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 # 通配符匹配不到目录时 cargo 会报错，所以目录出现一个加一个。
-members = ["apps/*", "tests/*"]
+members = ["apps/*", "tests/*", "features/*/*"]
 
 [workspace.package]
 version = "0.1.0"
@@ -14,15 +14,29 @@ publish = false
 kernel-api = { path = "../mk-kit/crates/kernel-api" }
 boot = { path = "../mk-kit/crates/boot" }
 boot-build = { path = "../mk-kit/crates/boot-build" }
+testkit = { path = "../mk-kit/crates/testkit" }
 
 cli-contract = { path = "../mk-kit/contracts/cli" }
+clock-contract = { path = "../mk-kit/contracts/clock" }
+log-contract = { path = "../mk-kit/contracts/log" }
+sql-contract = { path = "../mk-kit/contracts/sql" }
+
+items-contracts = { path = "features/items/contracts" }
+items-core = { path = "features/items/core" }
+items = { path = "features/items/component" }
 
 cli-clap = { path = "../mk-kit/services/cli-clap" }
 clock-system = { path = "../mk-kit/services/clock-system" }
 log-stderr = { path = "../mk-kit/services/log-stderr" }
+storage-sqlite = { path = "../mk-kit/services/storage-sqlite" }
 
+getrandom = "0.3"
+jiff = { version = "0.2", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tempfile = "3"
+tokio = { version = "1", features = ["rt", "macros", "sync", "time"] }
+ulid = { version = "1", default-features = false }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
