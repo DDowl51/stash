@@ -1,0 +1,6 @@
+[Unit]
+Description=stash：收件箱积压、条目到期时发桌面通知
+
+[Service]
+Type=oneshot
+ExecStart=%h/.cargo/bin/stash remind

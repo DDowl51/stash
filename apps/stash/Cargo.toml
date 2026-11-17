@@ -22,6 +22,7 @@ cli-clap.workspace = true
 clock-system.workspace = true
 exec-tokio.workspace = true
 log-stderr.workspace = true
+notify-dbus.workspace = true
 process-procfs.workspace = true
 prompt-vicinae.workspace = true
 screenshot-niri.workspace = true
@@ -39,6 +40,7 @@ expand-calc.workspace = true
 expand-script.workspace = true
 expand-snippets.workspace = true
 items.workspace = true
+remind.workspace = true
 
 [build-dependencies]
 boot-build.workspace = true

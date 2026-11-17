@@ -21,6 +21,11 @@ async fn run(app: &App, argv: Vec<String>) -> Result<u8, AppError> {
         // 系统服务不认识 stash：放在哪由启动器告诉它们（配置文件里写了就以配置为准）
         settings.set_default("storage-sqlite", "path", path(data.join("stash.db")));
         settings.set_default("context-screenshot", "dir", path(data.join("shots")));
+        settings.set_default(
+            "notify-dbus",
+            "app_name",
+            serde_json::Value::String("stash".to_owned()),
+        );
         // 不在 niri 会话里（ssh、纯终端）时窗口和截图服务都用不了；stash 照样要能用，
         // 所以没有 NIRI_SOCKET 时默认停用它们，以及依赖截图的上下文
         if std::env::var_os("NIRI_SOCKET").is_none_or(|s| s.is_empty()) {
@@ -100,8 +105,10 @@ mod tests {
                 "expand-snippets",
                 "items",
                 "log-stderr",
+                "notify-dbus",
                 "process-procfs",
                 "prompt-vicinae",
+                "remind",
                 "screenshot-niri",
                 "storage-sqlite",
                 "vcs-git",

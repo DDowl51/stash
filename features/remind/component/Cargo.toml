@@ -1,0 +1,35 @@
+[package]
+name = "remind"
+description = "应用功能：收件箱积压、条目到期时发桌面通知，一天一次；登记 stash remind。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[package.metadata.component]
+id = "remind"
+
+[dependencies]
+kernel-api.workspace = true
+remind-core.workspace = true
+items-contracts.workspace = true
+notify-contract.workspace = true
+cli-contract.workspace = true
+clock-contract.workspace = true
+sql-contract.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+items-contracts = { workspace = true, features = ["testing"] }
+notify-contract = { workspace = true, features = ["testing"] }
+cli-contract = { workspace = true, features = ["testing"] }
+clock-contract = { workspace = true, features = ["testing"] }
+log-contract = { workspace = true, features = ["testing"] }
+items.workspace = true
+storage-sqlite.workspace = true
+testkit.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true

@@ -544,6 +544,10 @@ binds {
 | `D` 的写法 | — | `2026-11-20`、`11-20`、`今天/明天/后天`、`+3`、留空清掉 | 完整的 `@周五` 语法在 `capture-core` 里，`review` 不能依赖别的功能的 core；记录时用完整语法，整理时够用 |
 | `items` 的命令行依赖 | 必需 | 改为 `optional_requires` | `stash-tui` 进程里没有命令行服务 |
 | 界面真机测试 | 独立 socket 的 tmux | 开发机没装 tmux，用 Python 的 pty 跑真实的 `stash-tui`：发按键、检查输出里的文字，退出后用命令行核对数据库 | 效果相同（真实终端、真实按键），不用装东西 |
+| 到期提醒的形状 | 每个提醒一条通知 | 收件箱积压一条；到期的合成一条（列前 `max_listed` 个，有过期的用紧急），但每个条目各占一个 key（`due:<id>`），当天新到期的还会再提醒 | 同时到期好几条时不刷屏；又不会因为合并而漏掉当天新到期的 |
+| 发送失败 | 退出码非 0 | 发成功一条才记一条；通知服务不在时 `unavailable`（69），什么都不记，下次照样发 | 失败不能吞掉提醒 |
+| `notify-dbus` 的应用名 | — | 配置项 `app_name`，默认空，启动器 `set_default` 成 `stash`；另有 `bus`（测试用私有总线） | 系统服务里不能写应用名 |
+| systemd 文件位置 | `dist/systemd/` | `dist/stash-remind.{service,timer}`，和 lifelog 一样平放 | 和 lifelog 的安装脚本保持一样的形状 |
 | `capture` 扩展点的测试 | 假的 capture 宿主 | `capture-contracts` 的 `testing` 里有 `CaptureProbe`（两个扩展点的假所有者）、`context_contract`、`expander_contract` | 登记方的启动测试要有扩展点的所有者，否则配置错误来自缺依赖，测不到自己的配置检查 |
 
 ## 12. 以后

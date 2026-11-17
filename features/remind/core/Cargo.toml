@@ -1,0 +1,15 @@
+[package]
+name = "remind-core"
+description = "remind 的纯逻辑：什么时候提醒、提醒什么、一天一次。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+clock-contract.workspace = true
+notify-contract.workspace = true
+jiff.workspace = true
+
+[lints]
+workspace = true

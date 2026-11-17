@@ -21,6 +21,7 @@ cli-contract = { path = "../mk-kit/contracts/cli" }
 clock-contract = { path = "../mk-kit/contracts/clock" }
 exec-contract = { path = "../mk-kit/contracts/exec" }
 log-contract = { path = "../mk-kit/contracts/log" }
+notify-contract = { path = "../mk-kit/contracts/notify" }
 process-contract = { path = "../mk-kit/contracts/process" }
 prompt-contract = { path = "../mk-kit/contracts/prompt" }
 screenshot-contract = { path = "../mk-kit/contracts/screenshot" }
@@ -50,6 +51,8 @@ expand-script-core = { path = "features/expand-script/core" }
 expand-script = { path = "features/expand-script/component" }
 review-core = { path = "features/review/core" }
 review = { path = "features/review/component" }
+remind-core = { path = "features/remind/core" }
+remind = { path = "features/remind/component" }
 
 browser-chromium = { path = "../mk-kit/services/browser-chromium" }
 browser-firefox = { path = "../mk-kit/services/browser-firefox" }
@@ -59,6 +62,7 @@ cli-clap = { path = "../mk-kit/services/cli-clap" }
 clock-system = { path = "../mk-kit/services/clock-system" }
 exec-tokio = { path = "../mk-kit/services/exec-tokio" }
 log-stderr = { path = "../mk-kit/services/log-stderr" }
+notify-dbus = { path = "../mk-kit/services/notify-dbus" }
 process-procfs = { path = "../mk-kit/services/process-procfs" }
 prompt-vicinae = { path = "../mk-kit/services/prompt-vicinae" }
 screenshot-niri = { path = "../mk-kit/services/screenshot-niri" }

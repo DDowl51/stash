@@ -370,3 +370,34 @@ esac"#,
     let shots: Vec<_> = std::fs::read_dir(shot.parent().unwrap()).unwrap().collect();
     assert_eq!(shots.len(), 1, "只剩第一次的截图");
 }
+
+#[test]
+fn remind_dry_run_and_a_missing_notification_service() {
+    let w = World::new();
+    w.ok(&["add", "交周报", "@今天", "#t"]);
+    let out = w.ok(&["--text", "remind", "--dry-run"]);
+    assert!(out.starts_with("通知：今天：交周报\n"), "{out}");
+
+    // 私有总线上没有通知服务：失败，退出码 69，错误在 stderr
+    let mut daemon = Command::new("dbus-daemon")
+        .args(["--session", "--nofork", "--print-address=1"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let mut address = String::new();
+    std::io::BufRead::read_line(
+        &mut std::io::BufReader::new(daemon.stdout.take().unwrap()),
+        &mut address,
+    )
+    .unwrap();
+    w.config(&format!("[components.notify-dbus]\nbus = \"{}\"\n", address.trim()));
+    let out = w.run(&["remind"]);
+    let _ = daemon.kill();
+    let _ = daemon.wait();
+    assert_eq!(out.status.code(), Some(69), "{}", String::from_utf8_lossy(&out.stderr));
+    assert!(out.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&out.stderr).contains("发通知失败"));
+    // 没发出去就没记：dry-run 里还在
+    assert!(w.ok(&["--text", "remind", "--dry-run"]).contains("交周报"));
+}

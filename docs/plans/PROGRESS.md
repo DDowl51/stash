@@ -4,7 +4,7 @@
 
 ## 一句话现状
 
-阶段 0–3b 的代码完成：`stash capture` 记下来源窗口、终端的命令 / 目录 / git、浏览器网址、截图、自定义脚本的输出；输入支持 `=算式`、缩写、`!前缀` 外部改写，以及 `#分类 @日期` URL 语法。`stash-tui` 是整理界面（收件箱 / 待办 / 想法 / 稍后读 / 已完成，j/k 选择、单键操作）。阶段 3、3b 的真机验收要在桌面机上做（见下面清单）。下一步阶段 5：提醒。
+阶段 0–3b 的代码完成：`stash capture` 记下来源窗口、终端的命令 / 目录 / git、浏览器网址、截图、自定义脚本的输出；输入支持 `=算式`、缩写、`!前缀` 外部改写，以及 `#分类 @日期` URL 语法。`stash-tui` 是整理界面（收件箱 / 待办 / 想法 / 稍后读 / 已完成，j/k 选择、单键操作）。阶段 3、3b 的真机验收要在桌面机上做（见下面清单）。`stash remind` 由 systemd timer 定时运行，收件箱积压、条目到期时发桌面通知（一天一次）。下一步阶段 6：收尾（安装脚本、文档、回写规范）。
 
 档位：中等　配套：数据应用、命令行、常驻进程 / 桌面工具（部分）
 
@@ -26,7 +26,7 @@
 | 3 | 快速记录（窗口上下文） | 代码完成；真机验收待桌面机 |
 | 3b | 更多上下文和展开 | 代码完成；真机验收待桌面机 |
 | 4 | `tui` v2 + 整理界面 | 完成（开发机上用 pty 真实运行过） |
-| 5 | 提醒 | 未开始 |
+| 5 | 提醒 | 代码完成；真机收到通知待桌面机 |
 | 6 | 收尾 | 未开始 |
 
 ## 已确认的事
@@ -111,6 +111,17 @@ mk-kit 全量检查通过。开发机上 `stash ls`、`stash capture --message` 
 | lifelog | `56bec32` | 页面补 `act`；配置文档加 `opener`（config-doc 测试发现的） | `scripts/check.sh` 通过 |
 | stash | 见 `git log` | `features/review/{core,component}`、`apps/stash-tui`；`items` 的命令行依赖改为可选 | `scripts/check.sh` 通过，0 警告，125 个测试；`review` 组件测试用真的 items + 内存 SQLite + 假外壳覆盖每个按键；pty 里真实运行 `stash-tui`：切页、选择、完成、改文字（预填）、删除（二次确认）、退出码 0，退出后命令行核对数据库 |
 
+### 阶段 5 做了什么（2026-11-18）
+
+| 仓库 | 提交 | 内容 | 怎么验证的 |
+|---|---|---|---|
+| mk-kit | `f5a586e` | `notify` 契约（`RecordingNotify`）+ `notify-dbus`（zbus，不依赖 notify-send） | 起私有 `dbus-daemon`、挂假的 `org.freedesktop.Notifications`：收到的应用名、标题、正文、紧急程度都对；没有通知服务、总线不存在是 `unavailable` |
+| stash | 见 `git log` | `features/remind/{core,component}`（表 `remind_sent`）、`stash remind [--dry-run]`、`dist/stash-remind.{service,timer}`；启动器装上 `notify-dbus`、`remind` | `scripts/check.sh` 通过；core 6 个测试（阈值、合并、一天一次、提前天数）；组件 5 个（真 items + 内存 SQLite + 假通知：同一天不重复、当天新到期再提醒、第二天再提醒、dry-run 不发不记、通知失败不记）；e2e：`--dry-run` 的输出，私有总线上没有通知服务时退出码 69、什么都没记；`systemd-analyze verify` 只报 `~/.cargo/bin/stash` 还没装 |
+
+**桌面机验收清单（阶段 5，未验证）**：
+1. 装好后 `stash remind --dry-run` 看要发什么，再 `stash remind`，桌面上收到通知（标题、正文、过期时是紧急样式）。
+2. `systemctl --user enable --now stash-remind.timer`，`systemctl --user list-timers` 看下次运行时间；`journalctl --user -u stash-remind` 看日志。
+
 **这台开发机没有桌面环境**：所有要 niri / vicinae / 通知的真机验收（阶段 3、3b、4、5）都要在桌面机上做，计划里把它们列成「桌面机验收清单」，开发机上只跑自动测试。
 
 ## 对规范的反馈
@@ -131,5 +142,5 @@ mk-kit 全量检查通过。开发机上 `stash ls`、`stash capture --message` 
 
 ## 下一步
 
-1. 阶段 5：mk-kit 加 `notify` 契约和 `notify-dbus`；stash 加 `remind`（`stash remind`，收件箱积压和到期提醒，一天一次）和 systemd timer（设计 §5.5）。
+1. 阶段 6：`scripts/install.sh`（装 `stash`、`stash-tui`，放 systemd 单元）、README 和配置文档（含 config-doc 检查）、niri 快捷键示例；把「对规范的反馈」回写到 `microkernel-architecture` skill。
 2. 桌面机上：阶段 3、3b 验收清单；lifelog `scripts/install.sh` 后确认 lifelogd 正常。

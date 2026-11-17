@@ -1,0 +1,11 @@
+[Unit]
+Description=stash：登录 5 分钟后提醒一次，之后每小时看一次（同一个提醒一天只发一次）
+
+[Timer]
+# 相对于用户会话（systemd --user）启动，也就是登录
+OnStartupSec=5min
+OnUnitActiveSec=1h
+RandomizedDelaySec=1min
+
+[Install]
+WantedBy=timers.target
