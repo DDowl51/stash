@@ -235,14 +235,9 @@ impl Component for ItemsComponent {
             kind: ComponentKind::Feature,
             summary: "条目的存储和读写",
             provides: vec![ITEMS.id()],
-            requires: vec![
-                SQL.id(),
-                MIGRATIONS.id(),
-                CLOCK.id(),
-                LOG.id(),
-                CLI_COMMANDS.id(),
-            ],
-            optional_requires: vec![],
+            requires: vec![SQL.id(), MIGRATIONS.id(), CLOCK.id(), LOG.id()],
+            // 终端界面那个进程里没有命令行：登记了也没人用，但不该因此起不来
+            optional_requires: vec![CLI_COMMANDS.id()],
         }
     }
 

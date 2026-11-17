@@ -536,6 +536,14 @@ binds {
 | `context-terminal` 找 shell | 窗口 pid → 最深的前台进程 | 终端下面「有控制终端的会话首进程」是 shell，有好几个时取最晚启动的；前台命令是该终端前台进程组的组长 | 拿不到「当前是哪个标签页」；在开发机的真实进程树上核对过判断依据，多标签页的取舍待桌面机核对 |
 | `context-script` 的环境变量 | `STASH_APP_ID`、`STASH_TITLE`、`STASH_PID`、`STASH_WORKSPACE`、`STASH_AT` | 另加 `STASH_ITEM_ID`、`STASH_AT_MS`、`STASH_WINDOW_ID`；`STASH_AT` 是带时区的 RFC 3339；没有的值给空字符串；key 加前缀 `script.<name>.` | 脚本不用判断变量在不在；上下文的 key 要能看出是谁给的 |
 | 不在 niri 会话里 | 启动器停用 `wm-niri` | 同时停用 `screenshot-niri` 和 `context-screenshot` | 截图也要 niri；`context-screenshot` 依赖截图服务，只停一个会启动失败 |
+| `tui` v2 的输入 | `ActionSpec.needs_input: Option<String>` | `act` 返回 `ActionResult.ask { prompt, initial }`，外壳弹框后用同一个键、同一行、带着 `input` 再调一次；另加 `select`（重取后选中哪行）、`open` | 「改文字」要预填原文，只有页面知道原文；两步比在声明里描述输入更通用 |
+| `tui` v2 和 lifelog | lifelog 的页面不用改 | lifelog 的页面补一个空的 `act`（mk-kit 的契约宏不支持默认方法） | 宏生成 trait、追踪包装和跨进程代理，加默认方法要改三处；一个页面实现补一个方法更便宜 |
+| 页面按键和外壳的键 | — | 页面的按键不能用 `q / j k h l . /` 和切页键，启动时检查；页面占用 `r` 时刷新改用 F5 | 稍后读的 `r` 和外壳的刷新撞了 |
+| 整理界面的按键 | `t/i/r` `x` `a` `d` `J/K` `e` `D` `o` `O`（选一条上下文打开） | 另加 `b` 回收件箱、已完成页的 `u` 恢复；`O` 直接打开截图（不弹选择） | 选一条上下文需要外壳支持「从列表里选」，先用最常用的截图 |
+| 待办页的顺序 | 先过期、再今天、再手动排序 | 只按手动排序；过期、今天到期用样式标出，页头写个数 | 显示顺序和排序值不一致时 `J/K` 的效果说不清 |
+| `D` 的写法 | — | `2026-11-20`、`11-20`、`今天/明天/后天`、`+3`、留空清掉 | 完整的 `@周五` 语法在 `capture-core` 里，`review` 不能依赖别的功能的 core；记录时用完整语法，整理时够用 |
+| `items` 的命令行依赖 | 必需 | 改为 `optional_requires` | `stash-tui` 进程里没有命令行服务 |
+| 界面真机测试 | 独立 socket 的 tmux | 开发机没装 tmux，用 Python 的 pty 跑真实的 `stash-tui`：发按键、检查输出里的文字，退出后用命令行核对数据库 | 效果相同（真实终端、真实按键），不用装东西 |
 | `capture` 扩展点的测试 | 假的 capture 宿主 | `capture-contracts` 的 `testing` 里有 `CaptureProbe`（两个扩展点的假所有者）、`context_contract`、`expander_contract` | 登记方的启动测试要有扩展点的所有者，否则配置错误来自缺依赖，测不到自己的配置检查 |
 
 ## 12. 以后

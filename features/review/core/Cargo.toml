@@ -1,0 +1,16 @@
+[package]
+name = "review-core"
+description = "review 的纯逻辑：页面和按键、行和详情的排版、排序、截止日期的写法。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+items-contracts.workspace = true
+tui-contract.workspace = true
+clock-contract.workspace = true
+jiff.workspace = true
+
+[lints]
+workspace = true

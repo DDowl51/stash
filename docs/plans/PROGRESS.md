@@ -4,7 +4,7 @@
 
 ## 一句话现状
 
-阶段 0–3b 的代码完成：`stash capture` 记下来源窗口、终端的命令 / 目录 / git、浏览器网址、截图、自定义脚本的输出；输入支持 `=算式`、缩写、`!前缀` 外部改写，以及 `#分类 @日期` URL 语法。阶段 3、3b 的真机验收要在桌面机上做（见下面清单）。下一步阶段 4：终端整理界面。
+阶段 0–3b 的代码完成：`stash capture` 记下来源窗口、终端的命令 / 目录 / git、浏览器网址、截图、自定义脚本的输出；输入支持 `=算式`、缩写、`!前缀` 外部改写，以及 `#分类 @日期` URL 语法。`stash-tui` 是整理界面（收件箱 / 待办 / 想法 / 稍后读 / 已完成，j/k 选择、单键操作）。阶段 3、3b 的真机验收要在桌面机上做（见下面清单）。下一步阶段 5：提醒。
 
 档位：中等　配套：数据应用、命令行、常驻进程 / 桌面工具（部分）
 
@@ -25,7 +25,7 @@
 | 2 | `items` + 命令行 | 完成 |
 | 3 | 快速记录（窗口上下文） | 代码完成；真机验收待桌面机 |
 | 3b | 更多上下文和展开 | 代码完成；真机验收待桌面机 |
-| 4 | `tui` v2 + 整理界面 | 未开始 |
+| 4 | `tui` v2 + 整理界面 | 完成（开发机上用 pty 真实运行过） |
 | 5 | 提醒 | 未开始 |
 | 6 | 收尾 | 未开始 |
 
@@ -103,6 +103,14 @@ mk-kit 全量检查通过。开发机上 `stash ls`、`stash capture --message` 
 5. 配一个 `context-script`（比如 `lifelog`）和一个 `expand-script`，看输出进了条目。
 6. 从按键到输入框出现的时间（截图在弹框之前做，最多等 300 ms）。
 
+### 阶段 4 做了什么（2026-11-18）
+
+| 仓库 | 提交 | 内容 | 怎么验证的 |
+|---|---|---|---|
+| mk-kit | `04dd8c7` | `tui` 契约 v2（`Block::List`、`PageSpec.actions`、`act`、`ActionResult{message,reload,select,ask,open}`）；`tui-ratatui`：选中和高亮、详情区、确认、两步输入、提示行、`opener` 打开、按键冲突检查、F5 | 单元测试 33 个（状态机、排版、TestBackend 画面、冲突检查、opener 真的运行命令）；`scripts/check.sh` 通过 |
+| lifelog | `56bec32` | 页面补 `act`；配置文档加 `opener`（config-doc 测试发现的） | `scripts/check.sh` 通过 |
+| stash | 见 `git log` | `features/review/{core,component}`、`apps/stash-tui`；`items` 的命令行依赖改为可选 | `scripts/check.sh` 通过，0 警告，125 个测试；`review` 组件测试用真的 items + 内存 SQLite + 假外壳覆盖每个按键；pty 里真实运行 `stash-tui`：切页、选择、完成、改文字（预填）、删除（二次确认）、退出码 0，退出后命令行核对数据库 |
+
 **这台开发机没有桌面环境**：所有要 niri / vicinae / 通知的真机验收（阶段 3、3b、4、5）都要在桌面机上做，计划里把它们列成「桌面机验收清单」，开发机上只跑自动测试。
 
 ## 对规范的反馈
@@ -123,5 +131,5 @@ mk-kit 全量检查通过。开发机上 `stash ls`、`stash capture --message` 
 
 ## 下一步
 
-1. 阶段 4：mk-kit 的 `tui` 契约升到 v2（可选中的行、按键操作）、`tui-ratatui` 跟上；stash 加 `review` 和 `stash-tui` 启动器（设计 §6）。
+1. 阶段 5：mk-kit 加 `notify` 契约和 `notify-dbus`；stash 加 `remind`（`stash remind`，收件箱积压和到期提醒，一天一次）和 systemd timer（设计 §5.5）。
 2. 桌面机上：阶段 3、3b 验收清单；lifelog `scripts/install.sh` 后确认 lifelogd 正常。

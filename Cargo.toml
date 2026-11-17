@@ -25,6 +25,7 @@ process-contract = { path = "../mk-kit/contracts/process" }
 prompt-contract = { path = "../mk-kit/contracts/prompt" }
 screenshot-contract = { path = "../mk-kit/contracts/screenshot" }
 sql-contract = { path = "../mk-kit/contracts/sql" }
+tui-contract = { path = "../mk-kit/contracts/tui" }
 vcs-contract = { path = "../mk-kit/contracts/vcs" }
 window-contract = { path = "../mk-kit/contracts/window" }
 
@@ -47,6 +48,8 @@ expand-calc = { path = "features/expand-calc/component" }
 expand-snippets = { path = "features/expand-snippets/component" }
 expand-script-core = { path = "features/expand-script/core" }
 expand-script = { path = "features/expand-script/component" }
+review-core = { path = "features/review/core" }
+review = { path = "features/review/component" }
 
 browser-chromium = { path = "../mk-kit/services/browser-chromium" }
 browser-firefox = { path = "../mk-kit/services/browser-firefox" }
@@ -60,6 +63,7 @@ process-procfs = { path = "../mk-kit/services/process-procfs" }
 prompt-vicinae = { path = "../mk-kit/services/prompt-vicinae" }
 screenshot-niri = { path = "../mk-kit/services/screenshot-niri" }
 storage-sqlite = { path = "../mk-kit/services/storage-sqlite" }
+tui-ratatui = { path = "../mk-kit/services/tui-ratatui" }
 vcs-git = { path = "../mk-kit/services/vcs-git" }
 wm-niri = { path = "../mk-kit/services/wm-niri" }
 
