@@ -1,0 +1,21 @@
+[package]
+name = "capture-contracts"
+description = "capture 的两个扩展点：采集上下文、展开输入。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[features]
+# 契约测试，给 context-* 和 expand-* 的测试用。
+testing = []
+
+[dependencies]
+kernel-api.workspace = true
+clock-contract.workspace = true
+items-contracts.workspace = true
+window-contract.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

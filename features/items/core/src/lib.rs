@@ -50,6 +50,17 @@ pub fn id_query(id: &str) -> Result<String, AppError> {
     Ok(id)
 }
 
+/// 调用方给的完整 id：必须是 ULID（26 个 Crockford base32 字符）。统一成大写。
+pub fn check_id(id: &str) -> Result<String, AppError> {
+    let upper = id.trim().to_ascii_uppercase();
+    let crockford = |c: char| c.is_ascii_digit() || (c.is_ascii_uppercase() && !"ILOU".contains(c));
+    // 第一个字符最大是 7，否则超出 128 位
+    if upper.len() != 26 || !upper.chars().all(crockford) || upper.as_bytes()[0] > b'7' {
+        return Err(AppError::validation(format!("id `{id}` 不是 ULID")));
+    }
+    Ok(upper)
+}
+
 /// 本地的今天。
 pub fn local_date(utc_ms: i64, offset_min: i32) -> Result<Date, AppError> {
     let ts = Timestamp::from_millisecond(utc_ms)
@@ -125,6 +136,26 @@ mod tests {
         assert_eq!(id_query(" 7k3q ").unwrap(), "7K3Q");
         assert_eq!(id_query("abc").unwrap_err().kind, ErrorKind::Validation);
         assert_eq!(id_query("ab%d").unwrap_err().kind, ErrorKind::Validation);
+    }
+
+    #[test]
+    fn given_ids_must_be_ulids() {
+        assert_eq!(
+            check_id("01jd0000000000000000000000").unwrap(),
+            "01JD0000000000000000000000"
+        );
+        for bad in [
+            "",
+            "01JD",
+            "01JD000000000000000000000U",
+            "81JD0000000000000000000000",
+        ] {
+            assert_eq!(
+                check_id(bad).unwrap_err().kind,
+                ErrorKind::Validation,
+                "{bad}"
+            );
+        }
     }
 
     #[test]

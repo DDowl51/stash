@@ -1,0 +1,21 @@
+[package]
+name = "context-window"
+description = "应用功能：记录时的来源窗口（应用、标题、工作区、pid）。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[package.metadata.component]
+id = "context-window"
+
+[dependencies]
+kernel-api.workspace = true
+capture-contracts.workspace = true
+
+[dev-dependencies]
+capture-contracts = { workspace = true, features = ["testing"] }
+tokio.workspace = true
+
+[lints]
+workspace = true

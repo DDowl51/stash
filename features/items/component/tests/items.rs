@@ -101,31 +101,22 @@ async fn publishes_changes() {
 }
 
 #[tokio::test]
-async fn cli_add_list_show_and_change() {
+async fn cli_list_show_and_change() {
     let f = fixture().await;
-    let out = f
-        .cli
-        .invoke(
-            "add",
-            &[
-                ("words", "回复老王"),
-                ("kind", "todo"),
-                ("due", "2026-11-20"),
-            ],
-            Format::Json,
-        )
+    // 新建在 capture 的 `stash add` 里，这里直接走契约
+    let added = f
+        .items
+        .add(NewItem {
+            kind: Some(Kind::Todo),
+            due_on: Some("2026-11-20".to_owned()),
+            ..NewItem::text("回复老王")
+        })
         .await
         .unwrap();
-    let added: serde_json::Value = serde_json::from_str(out.text.trim()).unwrap();
-    assert_eq!(added["kind"], "todo");
-    assert_eq!(added["due_on"], "2026-11-20");
-    let id = added["id"].as_str().unwrap().to_owned();
+    let id = added.id.clone();
     let short = &id[id.len() - 6..];
 
-    f.cli
-        .invoke("add", &[("words", "看看 niri 新版")], TEXT)
-        .await
-        .unwrap();
+    f.items.add(NewItem::text("看看 niri 新版")).await.unwrap();
 
     // 文本：不限分类时带分类标签；JSON 是一行一个
     let text = f.cli.invoke("ls", &[], TEXT).await.unwrap().text;
@@ -200,10 +191,11 @@ async fn cli_rejects_bad_input() {
     let f = fixture().await;
     let kind = |r: Result<_, kernel_api::AppError>| r.unwrap_err().kind;
     use kernel_api::ErrorKind::{NotFound, Validation};
+    let it = f.items.add(NewItem::text("x")).await.unwrap();
     assert_eq!(
         kind(
             f.cli
-                .invoke("add", &[("words", "x"), ("due", "明天")], TEXT)
+                .invoke("due", &[("id", &it.id), ("date", "明天")], TEXT)
                 .await
         ),
         Validation

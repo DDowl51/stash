@@ -13,11 +13,15 @@ cli-contract.workspace = true
 serde_json.workspace = true
 
 # 这个进程里的组件。加一行就多装一个，不用改代码。
+capture.workspace = true
 cli-clap.workspace = true
 clock-system.workspace = true
+context-window.workspace = true
 items.workspace = true
 log-stderr.workspace = true
+prompt-vicinae.workspace = true
 storage-sqlite.workspace = true
+wm-niri.workspace = true
 
 [build-dependencies]
 boot-build.workspace = true

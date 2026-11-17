@@ -51,6 +51,8 @@ impl World {
             .env("XDG_CONFIG_HOME", self.dir.path().join("config"))
             .env_remove("STASH_CONFIG")
             .env_remove("NO_COLOR")
+            // 测试可能就跑在 niri 会话里：默认当作不在，要 niri 的测试自己设
+            .env_remove("NIRI_SOCKET")
             .args(args);
         c
     }
@@ -71,6 +73,22 @@ impl World {
         String::from_utf8(out.stdout).unwrap()
     }
 
+    /// 写配置文件。
+    fn config(&self, toml: &str) {
+        let dir = self.dir.path().join("config/stash");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("config.toml"), toml).unwrap();
+    }
+
+    /// 一个假的 vicinae：执行 `body`。返回它的路径。
+    fn fake_vicinae(&self, body: &str) -> PathBuf {
+        use std::os::unix::fs::PermissionsExt;
+        let path = self.dir.path().join("vicinae");
+        std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        path
+    }
+
     fn json_lines(&self, args: &[&str]) -> Vec<Value> {
         self.ok(args)
             .lines()
@@ -85,7 +103,7 @@ fn add_then_list_as_json_lines_in_the_default_data_dir() {
     let added = w.json_lines(&["add", "回复", "老王", "--kind", "todo"]);
     assert_eq!(added.len(), 1);
     assert_eq!(added[0]["text"], "回复 老王");
-    w.ok(&["add", "https://example.com/post"]);
+    w.ok(&["add", "看看", "niri", "新版"]);
 
     let all = w.json_lines(&["ls"]);
     assert_eq!(all.len(), 2);
@@ -168,4 +186,137 @@ fn text_output_when_asked() {
     w.ok(&["add", "回复老王", "--kind", "todo", "--due", "2026-11-20"]);
     let text = w.ok(&["--text", "ls"]);
     assert!(text.contains("[待办]  @2026-11-20  回复老王"), "{text}");
+}
+
+#[test]
+fn add_understands_tags_and_dates() {
+    let w = World::new();
+    let it = &w.json_lines(&["add", "交周报", "@2026-11-20", "#t"])[0];
+    assert_eq!(it["text"], "交周报");
+    assert_eq!(it["kind"], "todo");
+    assert_eq!(it["due_on"], "2026-11-20");
+    let it = &w.json_lines(&["add", "https://example.com/post"])[0];
+    assert_eq!(it["kind"], "read_later");
+    assert_eq!(it["url"], "https://example.com/post");
+
+    let parsed = &w.json_lines(&["parse", "学", "#C++", "#i"])[0];
+    assert_eq!(parsed["text"], "学 #C++");
+    assert_eq!(parsed["kind"], "idea");
+    assert_eq!(w.json_lines(&["ls"]).len(), 2, "parse 不保存");
+
+    let out = w.run(&["add", "#t"]);
+    assert_eq!(out.status.code(), Some(65), "只有标记：数据错误");
+}
+
+#[test]
+fn capture_through_a_fake_vicinae_without_niri() {
+    let w = World::new();
+    let vicinae = w
+        .fake_vicinae(r#"cat > /dev/null; printf '%s\n' "$@" > "$0.args"; echo '  回复老王 #t  '"#);
+    w.config(&format!(
+        "[components.prompt-vicinae]\ncommand = \"{}\"\n",
+        vicinae.display()
+    ));
+    let it = &w.json_lines(&["capture", "--kind", "idea"])[0];
+    assert_eq!(it["text"], "回复老王");
+    assert_eq!(it["kind"], "todo", "# 优先于 --kind");
+    assert!(it.get("source").is_none(), "没有 niri：没有来源");
+    let args = std::fs::read_to_string(w.dir.path().join("vicinae.args")).unwrap();
+    assert!(args.starts_with("dmenu\n--placeholder\n→ 想法"), "{args}");
+
+    // Esc：不保存，什么都不输出，退出码 0
+    w.fake_vicinae("exit 1");
+    assert_eq!(w.ok(&["capture"]), "");
+    assert_eq!(w.json_lines(&["ls"]).len(), 1);
+
+    // vicinae 坏了：69
+    w.fake_vicinae("echo boom >&2; exit 5");
+    let out = w.run(&["capture"]);
+    assert_eq!(out.status.code(), Some(69));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("boom"));
+}
+
+/// 假的 niri：事件流的连接接住不说话；一次性请求按名字回答。
+fn fake_niri(socket: &Path) {
+    use std::io::{BufRead, BufReader};
+    use std::os::unix::net::UnixListener;
+    let listener = UnixListener::bind(socket).unwrap();
+    std::thread::spawn(move || {
+        let mut held = Vec::new();
+        for conn in listener.incoming() {
+            let Ok(conn) = conn else { return };
+            let mut reader = BufReader::new(conn);
+            let mut request = String::new();
+            if reader.read_line(&mut request).is_err() {
+                continue;
+            }
+            let mut conn = reader.into_inner();
+            let reply = match request.trim() {
+                "\"FocusedWindow\"" => {
+                    r#"{"Ok":{"FocusedWindow":{"id":9,"title":"PR #12 — Zen Browser","app_id":"zen","pid":4321,"workspace_id":3,"is_focused":true}}}"#
+                }
+                "\"Workspaces\"" => r#"{"Ok":{"Workspaces":[{"id":3,"idx":1,"name":"web"}]}}"#,
+                _ => {
+                    held.push(conn);
+                    continue;
+                }
+            };
+            let _ = writeln!(conn, "{reply}");
+        }
+    });
+}
+
+#[test]
+fn capture_records_the_window_it_came_from() {
+    let w = World::new();
+    let socket = w.dir.path().join("niri.sock");
+    fake_niri(&socket);
+    let vicinae = w.fake_vicinae("cat > /dev/null; echo '看下这个 PR'");
+    w.config(&format!(
+        "[components.prompt-vicinae]\ncommand = \"{}\"\n",
+        vicinae.display()
+    ));
+    let out = w
+        .cmd(&["capture"])
+        .env("NIRI_SOCKET", &socket)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let it: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(it["source"], "zen · PR #12 — Zen Browser");
+    let context: Vec<(String, String)> = it["context"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| {
+            (
+                c["key"].as_str().unwrap().to_owned(),
+                c["value"].as_str().unwrap().to_owned(),
+            )
+        })
+        .collect();
+    let pairs: Vec<(&str, &str)> = context
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
+    assert_eq!(
+        pairs,
+        [
+            ("window.app", "zen"),
+            ("window.title", "PR #12 — Zen Browser"),
+            ("window.workspace", "web"),
+            ("window.pid", "4321"),
+        ]
+    );
+    // show 里看得到
+    let id = it["id"].as_str().unwrap();
+    let shown = w.ok(&["--text", "show", &id[id.len() - 6..]]);
+    assert!(
+        shown.contains("来源  zen · PR #12") && shown.contains("工作区  web"),
+        "{shown}"
+    );
 }

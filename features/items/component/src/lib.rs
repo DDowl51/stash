@@ -1,4 +1,4 @@
-//! 应用功能 `items`：条目的存储、读写契约和 `stash add / ls / show / …` 命令。
+//! 应用功能 `items`：条目的存储、读写契约和 `stash ls / show / …` 命令。
 //!
 //! 这个包是适配层和组件定义：用 `Sql` 契约实现存储、用 `Clock` 契约取时间。
 //! 规则（校验、排序值、到期区间）在 `items-core` 里。
@@ -15,7 +15,7 @@ use items_contracts::{
     NewItem, Status,
 };
 use items_core::{
-    check_date, clean_text, due_range, id_query, local_date, rank_between, spaced_ranks,
+    check_date, check_id, clean_text, due_range, id_query, local_date, rank_between, spaced_ranks,
 };
 use kernel_api::{
     AppError, Component, ConfigSection, Host, Kind as ComponentKind, Manifest, NoConfig, Publisher,
@@ -70,8 +70,18 @@ impl Items for Service {
         let due_on = new.due_on.as_deref().map(check_date).transpose()?;
         let kind = new.kind.unwrap_or(Kind::Inbox);
         let (now, _) = self.now().await?;
+        let id = match new.id.as_deref() {
+            Some(given) => {
+                let id = check_id(given)?;
+                if self.repo.exists(&id).await? {
+                    return Err(AppError::validation(format!("id `{id}` 已经用过了")));
+                }
+                id
+            }
+            None => new_id(now)?,
+        };
         let it = Item {
-            id: new_id(now)?,
+            id,
             text,
             url: new.url,
             kind,

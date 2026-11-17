@@ -26,6 +26,11 @@ async fn run(app: &App, argv: Vec<String>) -> Result<u8, AppError> {
                     .into_owned(),
             ),
         );
+        // 不在 niri 会话里（ssh、纯终端）时窗口服务起不来；stash 照样要能用，
+        // 所以没有 NIRI_SOCKET 时默认停用它（配置文件里明确写了 enabled 就以配置为准）
+        if std::env::var_os("NIRI_SOCKET").is_none_or(|s| s.is_empty()) {
+            settings.set_default("wm-niri", "enabled", serde_json::Value::Bool(false));
+        }
     })
     .await?;
     let code = match running.resolve(&CLI) {
@@ -80,11 +85,15 @@ mod tests {
         assert_eq!(
             LINKED_COMPONENTS,
             [
+                "capture",
                 "cli-clap",
                 "clock-system",
+                "context-window",
                 "items",
                 "log-stderr",
-                "storage-sqlite"
+                "prompt-vicinae",
+                "storage-sqlite",
+                "wm-niri"
             ]
         );
     }

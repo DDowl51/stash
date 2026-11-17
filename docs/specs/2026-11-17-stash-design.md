@@ -401,13 +401,13 @@ v1 的提供者：
 
 **展开失败时按原文保存**：超时、退出码非 0、输出看不懂，都按原文保存，在上下文里记一条失败原因。记录永远不能丢。
 
-`stash parse --text <文字> --json` 只跑展开和解析、不保存，输出 `Draft`。用来调试，以后的实时预览（§12）也用它。
+`stash parse <文字> --json` 只跑展开和解析、不保存，输出 `Draft`。用来调试，以后的实时预览（§12）也用它。
 
 ### 5.4 命令行
 
 ```
-stash capture [--kind todo|idea|read|inbox] [--text <文字>]   # 弹输入框；--text 时不弹
-stash parse --text <文字>                                      # 只展开和解析，不保存
+stash capture [--kind todo|idea|read|inbox] [--message <文字>]  # 弹输入框；--message 时不弹（上下文照样采）
+stash parse <文字>                                               # 只展开和解析，不保存
 stash add <文字> [--kind …] [--due YYYY-MM-DD]                # 不弹框（阶段 3 起和 capture 同样的语法）
 stash ls [--kind …] [--status …] [--due today|week|overdue] [--limit N]
 stash show <id>
@@ -519,7 +519,16 @@ binds {
 | 命令行形状 | `stash item add / list / move …`（名词 动词） | 扁平：`stash add / ls / show / move / done / archive / reopen / rm / due / edit` | cli-clap 只支持一层子命令；stash 只有「条目」一个名词，扁平更短，不用改 mk-kit 的命令行契约 |
 | 从 stdin 读 id | 命令行配套：ID 能从 stdin 读 | 暂不支持 | cli-clap 还没有这个能力；等真的需要批量操作时在 cli-clap 里加 |
 | 参数名 | — | 不能用 `json`、`text`、`color`、`trace`、`config`、`help`；`add`、`edit` 的文字参数叫 `words` | 和全局选项撞名时 cli-clap 会崩溃；e2e 测试发现，cli-clap 已改成登记时报配置错误（mk-kit 本次提交） |
-| `stash add` 的语法 | 和 `capture` 同样的语法（`#分类`、`@日期`、URL） | 阶段 2 只存原文，`--kind`、`--due` 走参数 | 解析在 `capture` 里，阶段 3 做完后 `add` 也走同一套 |
+| `stash add` 的语法 | 和 `capture` 同样的语法（`#分类`、`@日期`、URL） | 阶段 3 起 `add` 由 `capture` 登记（从 `items` 移过去），和弹框记录共用展开和规则；不采上下文 | `items` 不能依赖 `capture`；「从一段文字新建条目」本来就是 `capture` 的事 |
+| `capture` / `parse` 的参数 | `stash capture --text <文字>`、`stash parse --text <文字>` | `stash capture --message <文字>`、`stash parse <文字…>` | `text` 是全局选项的保留名 |
+| 条目 id | `items` 生成 | `NewItem` 加可选的 `id`（ULID，用过的、删掉的都不能再用）；`capture` 在按键那一刻生成 | 截图文件要在条目写入之前就按条目 id 命名；以后同步也要保留对方的 id |
+| `capture.context` 契约 | `spec`、`collect` | 加 `discard(snapshot)` | §5.2 第 5 步「Esc 删掉截图」需要让提供者自己清理，`capture` 不认识截图 |
+| 上下文条目的 key | — | 都以 `<提供者 id>.` 开头，`source` 除外；失败 / 超时记成 `capture.<id>` | 契约测试检查得了；排查时看得出是谁给的 |
+| `wm-niri` 在一次性进程里 | 直接用 | 事件流还没给出完整窗口列表时，`focused()` 改用 `FocusedWindow` + `Workspaces` 一次性请求（mk-kit `494e083`） | 一次性进程刚启动时窗口表是空的 |
+| 不在 niri 会话里 | `window` 是可选依赖 | 启动器在没有 `NIRI_SOCKET` 时 `set_default("wm-niri", "enabled", false)` | 否则 ssh 上来 `stash ls` 也会因为 `wm-niri` 启动失败而不能用 |
+| `prompt` 契约测试 | 契约测试 | `prompt_contract(make)`：`make` 按「用户怎么操作」造一个输入框；vicinae 用假脚本 | 输入框是交互的，契约测试只能描述场景 |
+| `@日期` 的周几 | — | `@周五` 指今天之后最近的周五（不含今天）；`@下周五` 指下一个自然周里的；另认 `3天后`、`+3`、`11/20`、`11月20日` | 今天用 `@今天` |
+| URL 识别 | — | `http(s)://` 开头的词，到第一个非 ASCII 字符为止，去掉末尾英文标点 | 中文里 URL 后面常直接接字 |
 
 ## 12. 以后
 

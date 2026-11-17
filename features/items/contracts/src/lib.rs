@@ -120,10 +120,15 @@ pub struct ContextEntry {
 }
 
 impl ContextEntry {
-    pub fn new(key: &str, label: &str, kind: ContextKind, value: impl Into<String>) -> Self {
+    pub fn new(
+        key: impl Into<String>,
+        label: impl Into<String>,
+        kind: ContextKind,
+        value: impl Into<String>,
+    ) -> Self {
         Self {
-            key: key.to_owned(),
-            label: label.to_owned(),
+            key: key.into(),
+            label: label.into(),
             kind,
             value: value.into(),
         }
@@ -158,6 +163,11 @@ pub struct Item {
 /// 新条目。
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct NewItem {
+    /// 调用方事先定好的 id（ULID）。不写由 `items` 生成。
+    /// 用途：记录时上下文（比如截图文件）要在条目写入之前就用上 id；以后的同步要保留对方的 id。
+    /// 不是 ULID、或者已经被用过（包括删掉的）是 `validation`。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
     pub text: String,
     #[serde(default)]
     pub url: Option<String>,
@@ -285,12 +295,16 @@ pub static ITEMS_CHANGED: EventDef<Changed> = EventDef::new("items", "changed");
 pub mod testing {
     //! 契约测试：`Items` 的任何实现都要通过。
 
-    use std::sync::Arc;
+    use std::sync::{Arc, Mutex, PoisonError};
 
-    use kernel_api::{AppError, ErrorKind};
+    use kernel_api::{
+        AppError, Component, ConfigSection, ErrorKind, Host, Kind as ComponentKind, Manifest,
+        async_trait,
+    };
 
     use super::{
-        ContextEntry, ContextKind, DueChange, ItemFilter, ItemPatch, Items, Kind, NewItem, Status,
+        ContextEntry, ContextKind, Counts, DueChange, ITEMS, Item, ItemFilter, ItemPatch, Items,
+        Kind, NewItem, Status,
     };
 
     fn check(ok: bool, what: &str) -> Result<(), AppError> {
@@ -495,6 +509,137 @@ pub mod testing {
             matches!(gone, Err(ref e) if e.kind == ErrorKind::NotFound),
             "删掉后找不到",
         )?;
+
+        // 调用方给的 id：原样（大写）保留；用过的（包括删掉的）、不是 ULID 的不行
+        let given = "01jd8x0000000000000000abcd";
+        let it = items
+            .add(NewItem {
+                id: Some(given.to_owned()),
+                ..NewItem::text("给了 id 的")
+            })
+            .await?;
+        check(it.id == given.to_ascii_uppercase(), "用调用方给的 id")?;
+        for (id, what) in [
+            (given.to_owned(), "id 不能重复"),
+            (a.id.clone(), "删掉的条目的 id 也不能再用"),
+            ("not-a-ulid".to_owned(), "id 必须是 ULID"),
+        ] {
+            let err = items
+                .add(NewItem {
+                    id: Some(id),
+                    ..NewItem::text("x")
+                })
+                .await;
+            check(
+                matches!(err, Err(ref e) if e.kind == ErrorKind::Validation),
+                what,
+            )?;
+        }
         Ok(())
+    }
+
+    /// 只会记录的假 `Items`：`add` 记下收到的 [`NewItem`]，`get` / `list` 从记下的里找，
+    /// 其余方法返回 `unavailable`。给只往里写的功能（比如 `capture`）做测试用；
+    /// 不通过契约测试，要完整行为的测试用真的 `items`。克隆出来的是同一个。
+    #[derive(Clone, Default)]
+    pub struct RecordingItems {
+        added: Arc<Mutex<Vec<NewItem>>>,
+    }
+
+    impl RecordingItems {
+        /// 收到过的新条目。
+        pub fn added(&self) -> Vec<NewItem> {
+            self.added
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .clone()
+        }
+
+        fn item(n: usize, new: NewItem) -> Item {
+            Item {
+                id: new.id.unwrap_or_else(|| format!("01JD{n:022}")),
+                text: new.text,
+                url: new.url,
+                kind: new.kind.unwrap_or(Kind::Inbox),
+                status: Status::Open,
+                rank: i64::try_from(n).unwrap_or(i64::MAX),
+                due_on: new.due_on,
+                source: new.source,
+                context: new.context,
+                created_at: 0,
+                updated_at: 0,
+            }
+        }
+
+        fn items(&self) -> Vec<Item> {
+            self.added()
+                .into_iter()
+                .enumerate()
+                .map(|(n, new)| Self::item(n + 1, new))
+                .collect()
+        }
+    }
+
+    fn unsupported<T>() -> Result<T, AppError> {
+        Err(AppError::unavailable("RecordingItems 不支持这个方法"))
+    }
+
+    #[async_trait]
+    impl Items for RecordingItems {
+        async fn add(&self, new: NewItem) -> Result<Item, AppError> {
+            let mut added = self.added.lock().unwrap_or_else(PoisonError::into_inner);
+            added.push(new.clone());
+            Ok(Self::item(added.len(), new))
+        }
+
+        async fn get(&self, id: String) -> Result<Item, AppError> {
+            let id = id.to_ascii_uppercase();
+            self.items()
+                .into_iter()
+                .find(|it| it.id.ends_with(&id))
+                .ok_or_else(|| AppError::not_found(format!("没有 `{id}`")))
+        }
+
+        async fn update(&self, _: String, _: ItemPatch) -> Result<Item, AppError> {
+            unsupported()
+        }
+
+        async fn reorder(&self, _: String, _: Option<String>) -> Result<(), AppError> {
+            unsupported()
+        }
+
+        async fn delete(&self, _: String) -> Result<(), AppError> {
+            unsupported()
+        }
+
+        async fn list(&self, filter: ItemFilter) -> Result<Vec<Item>, AppError> {
+            Ok(self
+                .items()
+                .into_iter()
+                .filter(|it| filter.kind.is_none_or(|k| k == it.kind))
+                .collect())
+        }
+
+        async fn counts(&self) -> Result<Counts, AppError> {
+            unsupported()
+        }
+    }
+
+    /// 组件 `items-fake`。
+    impl Component for RecordingItems {
+        fn manifest(&self) -> Manifest {
+            Manifest {
+                id: "items-fake",
+                kind: ComponentKind::Feature,
+                summary: "测试用：只记录新条目的假 items",
+                provides: vec![ITEMS.id()],
+                requires: vec![],
+                optional_requires: vec![],
+            }
+        }
+
+        fn start(&self, _config: &ConfigSection, host: &mut Host<'_>) -> Result<(), AppError> {
+            host.provide(&ITEMS, Arc::new(self.clone()))
+        }
     }
 }

@@ -74,6 +74,48 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
+name = "capture"
+version = "0.1.0"
+dependencies = [
+ "capture-contracts",
+ "capture-core",
+ "cli-contract",
+ "clock-contract",
+ "getrandom",
+ "items-contracts",
+ "kernel-api",
+ "log-contract",
+ "prompt-contract",
+ "serde",
+ "serde_json",
+ "testkit",
+ "tokio",
+ "ulid",
+ "window-contract",
+]
+
+[[package]]
+name = "capture-contracts"
+version = "0.1.0"
+dependencies = [
+ "clock-contract",
+ "items-contracts",
+ "kernel-api",
+ "serde",
+ "window-contract",
+]
+
+[[package]]
+name = "capture-core"
+version = "0.1.0"
+dependencies = [
+ "capture-contracts",
+ "clock-contract",
+ "jiff",
+ "kernel-api",
+]
+
+[[package]]
 name = "cc"
 version = "1.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -150,6 +192,15 @@ dependencies = [
  "jiff",
  "kernel-api",
  "serde",
+]
+
+[[package]]
+name = "context-window"
+version = "0.1.0"
+dependencies = [
+ "capture-contracts",
+ "kernel-api",
+ "tokio",
 ]
 
 [[package]]
@@ -565,6 +616,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "prompt-contract"
+version = "0.1.0"
+dependencies = [
+ "kernel-api",
+ "serde",
+]
+
+[[package]]
+name = "prompt-vicinae"
+version = "0.1.0"
+dependencies = [
+ "kernel-api",
+ "prompt-contract",
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -750,14 +819,18 @@ version = "0.1.0"
 dependencies = [
  "boot",
  "boot-build",
+ "capture",
  "cli-clap",
  "cli-contract",
  "clock-system",
+ "context-window",
  "items",
  "kernel-api",
  "log-stderr",
+ "prompt-vicinae",
  "serde_json",
  "storage-sqlite",
+ "wm-niri",
 ]
 
 [[package]]
@@ -1024,6 +1097,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "window-contract"
+version = "0.1.0"
+dependencies = [
+ "clock-contract",
+ "kernel-api",
+ "serde",
+]
+
+[[package]]
 name = "windows-link"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1049,6 +1131,19 @@ name = "wit-bindgen"
 version = "0.57.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
+
+[[package]]
+name = "wm-niri"
+version = "0.1.0"
+dependencies = [
+ "clock-contract",
+ "kernel-api",
+ "log-contract",
+ "serde",
+ "serde_json",
+ "tokio",
+ "window-contract",
+]
 
 [[package]]
 name = "zmij"

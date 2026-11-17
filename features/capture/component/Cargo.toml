@@ -1,0 +1,40 @@
+[package]
+name = "capture"
+description = "应用功能：拍下当时的窗口、并发采集上下文、弹输入框、展开、写入。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[package.metadata.component]
+id = "capture"
+
+[dependencies]
+kernel-api.workspace = true
+capture-contracts.workspace = true
+capture-core.workspace = true
+items-contracts.workspace = true
+cli-contract.workspace = true
+clock-contract.workspace = true
+log-contract.workspace = true
+prompt-contract.workspace = true
+window-contract.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+getrandom.workspace = true
+ulid.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+capture-contracts = { workspace = true, features = ["testing"] }
+items-contracts = { workspace = true, features = ["testing"] }
+cli-contract = { workspace = true, features = ["testing"] }
+clock-contract = { workspace = true, features = ["testing"] }
+log-contract = { workspace = true, features = ["testing"] }
+prompt-contract = { workspace = true, features = ["testing"] }
+window-contract = { workspace = true, features = ["testing"] }
+testkit.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

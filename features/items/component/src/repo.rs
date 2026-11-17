@@ -137,6 +137,15 @@ impl Repo {
         }
     }
 
+    /// 这个 id 用过没有（包括删掉的）。
+    pub async fn exists(&self, id: &str) -> Result<bool, AppError> {
+        let rows = self
+            .sql
+            .query(Statement::new("SELECT 1 FROM items_item WHERE id = ?1").bind(id))
+            .await?;
+        Ok(!rows.rows.is_empty())
+    }
+
     pub async fn get(&self, id: &str) -> Result<Item, AppError> {
         let rows = self
             .sql

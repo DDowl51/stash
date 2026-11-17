@@ -1,14 +1,13 @@
-//! 命令行：`stash add / ls / show / move / done / archive / reopen / rm / due / edit`。
+//! 命令行：`stash ls / show / move / done / archive / reopen / rm / due / edit`。
+//! （新建条目的 `stash add` 在 `capture` 里：它和弹框记录共用 `#`、`@` 语法。）
 //!
 //! 只把命令翻译成 `Items` 的请求、把结果排成文本或 JSON；不碰终端、不管退出码（那是 `cli` 服务的事）。
-//! 修改类命令成功时什么都不输出，`add` 输出新条目（管道里可以接着用它的 id）。
+//! 修改类命令成功时什么都不输出。
 
 use std::sync::Arc;
 
 use cli_contract::{ArgKind, ArgSpec, CommandProvider, CommandSpec, Format, Invocation, Output};
-use items_contracts::{
-    DueChange, DueFilter, Item, ItemFilter, ItemPatch, Items, Kind, NewItem, Status,
-};
+use items_contracts::{DueChange, DueFilter, Item, ItemFilter, ItemPatch, Items, Kind, Status};
 use kernel_api::{AppError, async_trait};
 
 use crate::Service;
@@ -157,15 +156,6 @@ impl CommandProvider for Commands {
     async fn commands(&self) -> Result<Vec<CommandSpec>, AppError> {
         Ok(vec![
             command(
-                "add",
-                "记下一条（不弹输入框）",
-                vec![
-                    arg("words", "要记的内容", ArgKind::Rest),
-                    opt("kind", "放进哪个分类，不写进收件箱", KINDS),
-                    opt("due", "截止日期 YYYY-MM-DD", &[]),
-                ],
-            ),
-            command(
                 "ls",
                 "列出未完成的条目",
                 vec![
@@ -210,17 +200,6 @@ impl CommandProvider for Commands {
 
     async fn run(&self, inv: Invocation) -> Result<Output, AppError> {
         let text = match inv.command.as_str() {
-            "add" => {
-                let it = self
-                    .0
-                    .add(NewItem {
-                        kind: kind_arg(&inv, "kind")?,
-                        due_on: inv.args.get("due").cloned(),
-                        ..NewItem::text(required(&inv, "words")?)
-                    })
-                    .await?;
-                render(&[it], inv.format, true)?
-            }
             "ls" => {
                 let kind = kind_arg(&inv, "kind")?;
                 let status = inv
