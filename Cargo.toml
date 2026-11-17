@@ -1,0 +1,38 @@
+[workspace]
+resolver = "3"
+# 通配符匹配不到目录时 cargo 会报错，所以目录出现一个加一个。
+members = ["apps/*", "tests/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[workspace.dependencies]
+# kernel 和通用系统服务在共享仓库 mk-kit（../mk-kit），这里用 path 依赖。
+kernel-api = { path = "../mk-kit/crates/kernel-api" }
+boot = { path = "../mk-kit/crates/boot" }
+boot-build = { path = "../mk-kit/crates/boot-build" }
+
+cli-contract = { path = "../mk-kit/contracts/cli" }
+
+cli-clap = { path = "../mk-kit/services/cli-clap" }
+clock-system = { path = "../mk-kit/services/clock-system" }
+log-stderr = { path = "../mk-kit/services/log-stderr" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+dbg_macro = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+
+[profile.dev.package."*"]
+opt-level = 2
