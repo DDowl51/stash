@@ -10,7 +10,7 @@ use browser_contract::{BROWSER_HISTORY, BrowserHistory, Visit};
 use capture_contracts::{
     CAPTURE_CONTEXT, ContextEntry, ContextKind, ContextProvider, ContextSpec, Phase, Snapshot,
 };
-use context_browser_core::{best_match, page_title};
+use context_browser_core::{best_match, check_app_key, find_app, page_title};
 use kernel_api::{
     AppError, Component, ConfigSection, Host, Kind, Manifest, async_trait, register_component,
 };
@@ -30,7 +30,7 @@ struct App {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields, default)]
 struct Config {
-    /// app_id → 浏览器。
+    /// app_id → 浏览器。键以 `*` 结尾表示前缀，精确的键优先。
     apps: BTreeMap<String, App>,
     /// 往回找多久的历史。
     lookback_minutes: u32,
@@ -67,6 +67,16 @@ impl Default for Config {
             lookback_minutes: 30,
             max_visits: 300,
         }
+    }
+}
+
+impl Config {
+    /// 启动时检查，写错的键尽早报出来。
+    fn check(&self) -> Result<(), AppError> {
+        self.apps
+            .keys()
+            .try_for_each(|k| check_app_key(k))
+            .map_err(|e| AppError::config(format!("context-browser 的 {e}")))
     }
 }
 
@@ -110,7 +120,11 @@ impl ContextProvider for Provider {
         let Some(window) = snapshot.window else {
             return Ok(Vec::new());
         };
-        let Some(app) = window.app_id.as_ref().and_then(|a| self.config.apps.get(a)) else {
+        let Some(app) = window
+            .app_id
+            .as_deref()
+            .and_then(|a| find_app(&self.config.apps, a))
+        else {
             return Ok(Vec::new());
         };
         let title = page_title(window.title.as_deref().unwrap_or(""), &app.title_suffixes);
@@ -163,6 +177,7 @@ impl Component for ContextBrowser {
 
     fn start(&self, config: &ConfigSection, host: &mut Host<'_>) -> Result<(), AppError> {
         let config: Config = config.parse()?;
+        config.check()?;
         let provider = Provider {
             history: host.resolve(&BROWSER_HISTORY)?,
             config,
@@ -301,6 +316,34 @@ mod tests {
         assert_eq!(got[0].value, "新标签页");
         assert_eq!(got[1].key, "browser.note");
         assert!(got[1].value.contains("没找到"), "{got:?}");
+    }
+
+    #[tokio::test]
+    async fn prefix_keys_cover_every_window_of_that_kind() {
+        let mut p = provider();
+        p.config.apps.insert(
+            "zen-*".to_owned(),
+            App {
+                browser: "zen".to_owned(),
+                title_suffixes: vec![" — Zen Browser".to_owned()],
+            },
+        );
+        let profile = WindowInfo {
+            app_id: Some("zen-work".to_owned()),
+            ..zen("PR #12 · niri — Zen Browser")
+        };
+        let got = p.collect(snapshot(Some(profile))).await.unwrap();
+        assert_eq!(got[1].value, "https://github.com/niri/pull/12");
+    }
+
+    #[test]
+    fn a_star_in_the_middle_is_a_config_error() {
+        assert!(Config::default().check().is_ok());
+        let mut c = Config::default();
+        c.apps.insert("qute*-x".to_owned(), c.apps["zen"].clone());
+        let err = c.check().unwrap_err();
+        assert_eq!(err.kind, kernel_api::ErrorKind::Config);
+        assert!(err.message.contains("context-browser"), "{err:?}");
     }
 
     #[tokio::test]

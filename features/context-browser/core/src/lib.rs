@@ -3,7 +3,34 @@
 //! 浏览器窗口的标题是「网页标题 + 浏览器后缀」。去掉后缀，再到这个浏览器最近的访问历史里
 //! 找标题相同的那一条，就知道当时在看哪个网址。
 
+use std::collections::BTreeMap;
+
 use browser_contract::Visit;
+
+/// 配置里 app_id 键末尾的这个字符表示「以前面的文字开头的都算」。
+pub const PREFIX_MARK: char = '*';
+
+/// 检查一个 app_id 键：`*` 只能写在末尾，写在别处多半是以为支持通配符。
+pub fn check_app_key(key: &str) -> Result<(), String> {
+    let head = key.strip_suffix(PREFIX_MARK).unwrap_or(key);
+    if head.contains(PREFIX_MARK) {
+        return Err(format!(
+            "apps 的键 `{key}`：`*` 只能写在末尾，表示前缀（比如 \"qutebrowser-*\"）"
+        ));
+    }
+    Ok(())
+}
+
+/// 按 app_id 找配置。精确的键优先；否则取末尾带 `*`、前缀最长的那个。
+pub fn find_app<'a, V>(apps: &'a BTreeMap<String, V>, app_id: &str) -> Option<&'a V> {
+    apps.get(app_id).or_else(|| {
+        apps.iter()
+            .filter_map(|(k, v)| Some((k.strip_suffix(PREFIX_MARK)?, v)))
+            .filter(|(prefix, _)| app_id.starts_with(prefix))
+            .max_by_key(|(prefix, _)| prefix.len())
+            .map(|(_, v)| v)
+    })
+}
 
 /// 去掉第一个匹配上的后缀。都不匹配就原样（只去首尾空白）。
 pub fn page_title<'a>(window_title: &'a str, suffixes: &[String]) -> &'a str {
@@ -56,6 +83,59 @@ mod tests {
             url: url.to_owned(),
             title: title.map(str::to_owned),
         }
+    }
+
+    fn apps(keys: &[&str]) -> BTreeMap<String, String> {
+        keys.iter()
+            .map(|k| ((*k).to_owned(), (*k).to_owned()))
+            .collect()
+    }
+
+    #[test]
+    fn exact_keys_win_over_prefixes() {
+        let a = apps(&[
+            "qutebrowser-*",
+            "qutebrowser-silly",
+            "org.qutebrowser.qutebrowser",
+        ]);
+        let find = |id| find_app(&a, id).map(String::as_str);
+        assert_eq!(find("qutebrowser-silly"), Some("qutebrowser-silly"));
+        assert_eq!(find("qutebrowser-new-api"), Some("qutebrowser-*"));
+        assert_eq!(
+            find("org.qutebrowser.qutebrowser"),
+            Some("org.qutebrowser.qutebrowser")
+        );
+        assert_eq!(find("zen"), None);
+    }
+
+    #[test]
+    fn the_longest_prefix_wins() {
+        let a = apps(&["qutebrowser-*", "qutebrowser-work-*", "*"]);
+        let find = |id| find_app(&a, id).map(String::as_str);
+        assert_eq!(find("qutebrowser-work-2"), Some("qutebrowser-work-*"));
+        assert_eq!(find("qutebrowser-home"), Some("qutebrowser-*"));
+        assert_eq!(find("kitty"), Some("*"));
+    }
+
+    #[test]
+    fn the_text_before_the_star_must_all_be_there() {
+        // 前缀是 `*` 前面的全部文字，包括末尾的 `-`
+        let a = apps(&["qutebrowser-*"]);
+        assert_eq!(find_app(&a, "qutebrowser"), None);
+        assert_eq!(
+            find_app(&a, "qutebrowser-").map(String::as_str),
+            Some("qutebrowser-*")
+        );
+    }
+
+    #[test]
+    fn stars_only_at_the_end() {
+        assert!(check_app_key("qutebrowser-*").is_ok());
+        assert!(check_app_key("zen").is_ok());
+        assert!(check_app_key("*").is_ok());
+        let err = check_app_key("qute*-x").unwrap_err();
+        assert!(err.contains("qute*-x") && err.contains("末尾"), "{err}");
+        assert!(check_app_key("**").is_err());
     }
 
     #[test]

@@ -129,7 +129,7 @@ apps = { zen = { browser = "zen", title_suffixes = [" — Zen Browser", " - Zen 
 |---|---|
 | `lookback_minutes` | 往回找多久的历史 |
 | `max_visits` | 每个浏览器最多看多少条历史 |
-| `apps` | app_id → `browser`：历史来源里的浏览器名，也就是下面 `browser-*` 组件里的 `name`；`title_suffixes`：窗口标题末尾的浏览器后缀，按顺序试，去掉第一个匹配上的 |
+| `apps` | app_id → `browser`：历史来源里的浏览器名，也就是下面 `browser-*` 组件里的 `name`；`title_suffixes`：窗口标题末尾的浏览器后缀，按顺序试，去掉第一个匹配上的。键以 `*` 结尾表示前缀，见下面 |
 
 写成多行更好读：
 
@@ -141,6 +141,17 @@ zen = { browser = "zen", title_suffixes = [" — Zen Browser"] }
 ```
 
 注意：写了 `apps` 就会整个替换默认值，不是在默认值上追加。
+
+键以 `*` 结尾时，表示「app_id 以 `*` 前面的文字开头的窗口都算」。适合每个 profile 一个 app_id 的情况，比如用 `--desktop-file-name qutebrowser-<名字>` 打开的 qutebrowser：
+
+```toml
+# 例子
+[components.context-browser.apps]
+"org.qutebrowser.qutebrowser" = { browser = "qutebrowser", title_suffixes = [" - qutebrowser"] }
+"qutebrowser-*" = { browser = "qutebrowser", title_suffixes = [" - qutebrowser"] }
+```
+
+精确的键优先；都不精确匹配时，取前缀最长的那个。`*` 只能写在末尾，写在别处启动时报错。只有这里的 `apps` 支持前缀，`context-terminal.apps`、`context-screenshot.skip_apps`、`context-script` 的 `when_apps` 都是精确匹配。
 
 ### context-screenshot
 
