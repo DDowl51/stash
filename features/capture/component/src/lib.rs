@@ -7,9 +7,10 @@
 mod commands;
 mod flow;
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use capture_contracts::{CAPTURE_CONTEXT, CAPTURE_EXPANDERS, Kind};
+use capture_contracts::{CAPTURE, CAPTURE_CONTEXT, CAPTURE_EXPANDERS, CAPTURE_SAVED, Kind};
 use capture_core::Rules;
 use cli_contract::CLI_COMMANDS;
 use clock_contract::CLOCK;
@@ -77,6 +78,9 @@ struct Config {
     /// 展开器的执行顺序（展开器的 id）。没列的按 id 排在后面。
     expander_order: Vec<String>,
     tags: Tags,
+    /// 路由名 → 标记：`#标记` 表示这一条存好后还要送去那里（由订阅 `capture.saved` 的组件去送）。
+    /// `capture` 不认识任何路由；有哪些路由由启动器或配置给出。
+    routes: BTreeMap<String, Vec<String>>,
 }
 
 impl Default for Config {
@@ -90,6 +94,7 @@ impl Default for Config {
             context_order: words(&["window", "terminal", "browser", "screenshot", "script"]),
             expander_order: words(&["calc", "snippets", "script"]),
             tags: Tags::default(),
+            routes: BTreeMap::new(),
         }
     }
 }
@@ -105,7 +110,8 @@ impl Config {
                 (Kind::ReadLater, t.read_later.clone()),
             ],
             self.url_kind,
-        )
+        )?
+        .with_routes(self.routes.clone())
     }
 }
 
@@ -121,7 +127,7 @@ impl Component for CaptureComponent {
             id: "capture",
             kind: ComponentKind::Feature,
             summary: "快速记录：拍下当时的窗口、采集上下文、弹输入框、写入",
-            provides: vec![CAPTURE_CONTEXT.id(), CAPTURE_EXPANDERS.id()],
+            provides: vec![CAPTURE.id(), CAPTURE_CONTEXT.id(), CAPTURE_EXPANDERS.id()],
             requires: vec![
                 ITEMS.id(),
                 PROMPT.id(),
@@ -145,9 +151,11 @@ impl Component for CaptureComponent {
             providers: host.collector(&CAPTURE_CONTEXT)?,
             expanders: host.collector(&CAPTURE_EXPANDERS)?,
             log: Logger::new(host.resolve(&LOG)?, host.id()),
+            saved: host.publisher(&CAPTURE_SAVED)?,
             rules,
             config,
         });
+        host.provide(&CAPTURE, Arc::new(flow::Service(capture.clone())))?;
         host.contribute(&CLI_COMMANDS, Arc::new(commands::Commands(capture)))
     }
 }

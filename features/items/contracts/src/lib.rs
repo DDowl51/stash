@@ -212,6 +212,9 @@ pub struct ItemPatch {
     pub status: Option<Status>,
     #[serde(default)]
     pub due: Option<DueChange>,
+    /// 追加到上下文最后（比如推到别处之后记下那边的链接）。已有的上下文不动。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub append_context: Vec<ContextEntry>,
 }
 
 /// 按截止日期筛。日期以「今天」为准，今天由 `items` 按时钟算。
@@ -349,6 +352,51 @@ pub mod testing {
         check(
             got.source.as_deref() == Some("ghostty · ~"),
             "来源摘要原样取回",
+        )?;
+
+        // 追加上下文：已有的不动，新的排在最后，别的字段不变
+        let link = ContextEntry::new(
+            "dida.task",
+            "滴答任务",
+            ContextKind::Url,
+            "https://example/t/1",
+        );
+        let appended = items
+            .update(
+                a.id.clone(),
+                ItemPatch {
+                    append_context: vec![link.clone()],
+                    ..ItemPatch::default()
+                },
+            )
+            .await?;
+        let mut want = ctx.clone();
+        want.push(link);
+        check(appended.context == want, "追加的上下文在最后")?;
+        check(
+            items.get(a.id.clone()).await?.context == want,
+            "追加的上下文存下来了",
+        )?;
+        check(
+            appended.text == a.text && appended.kind == a.kind,
+            "只追加时别的字段不变",
+        )?;
+        let keyless = items
+            .update(
+                a.id.clone(),
+                ItemPatch {
+                    append_context: vec![ContextEntry::new(" ", "x", ContextKind::Text, "x")],
+                    ..ItemPatch::default()
+                },
+            )
+            .await;
+        check(
+            matches!(keyless, Err(ref e) if e.kind == ErrorKind::Validation),
+            "追加的上下文没有 key 是 validation",
+        )?;
+        check(
+            items.get(a.id.clone()).await?.context.len() == 3,
+            "失败时什么都没追加",
         )?;
 
         // 后缀也能找到

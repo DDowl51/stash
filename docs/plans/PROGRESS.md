@@ -136,6 +136,10 @@ mk-kit 全量检查通过。开发机上 `stash ls`、`stash capture --message` 
 
 **这台开发机没有桌面环境**：所有要 niri / vicinae / 通知的真机验收（阶段 3、3b、4、5）都要在桌面机上做，计划里把它们列成「桌面机验收清单」，开发机上只跑自动测试。
 
+### 接入滴答（2026-11-25）
+
+做的是 dida 仓库计划里的阶段 5，进度记在 dida 的 `docs/plans/PROGRESS.md`。stash 这边：`dida-push`、`capture` 的路由和 `capture.saved`、`items` 的 `append_context`、`review.actions`、启动器接入、文档。`scripts/check.sh` 通过，176 个测试。
+
 ## 对规范的反馈
 
 以下各条都已在阶段 6 回写到 `microkernel-architecture`（2026-11-18）。

@@ -1,0 +1,15 @@
+[package]
+name = "dida-push-core"
+description = "dida-push 的纯逻辑：条目怎么变成滴答任务（标题、截止、描述、清单）。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+kernel-api.workspace = true
+items-contracts.workspace = true
+dida-tasks-contracts.workspace = true
+
+[lints]
+workspace = true

@@ -49,10 +49,13 @@ scripts/          check.sh（全量检查）、install.sh
 | `expand-script` | 前缀 → 外部命令 | 登记 `capture.expanders` | `exec` |
 | `review` | 整理界面的五个页面 | 登记 `tui.pages` | `items`、`clock` |
 | `remind` | 积压和到期提醒 | 登记 `cli.commands`、`migrations` | `items`、`notify`、`sql`、`clock` |
+| `dida-push` | 把条目推成滴答任务 | 订阅 `capture.saved`；登记 `review.actions`、`cli.commands`、`migrations` | `items`、`dida-tasks`、`sql`、`log`；可选 `capture` |
 
 系统服务（mk-kit）：`storage-sqlite`、`clock-system`、`log-stderr`、`cli-clap`、`tui-ratatui`、`wm-niri`、`screenshot-niri`、`prompt-vicinae`、`process-procfs`、`vcs-git`、`exec-tokio`、`notify-dbus`、`browser-history` 和三个浏览器适配。每个组件的配置见 [配置](configuration.md)。
 
-依赖只从应用功能指向系统服务。`capture` 不认识任何具体的上下文来源或展开器：它只声明两个扩展点，`context-*` 和 `expand-*` 来登记。
+依赖只从应用功能指向系统服务。`capture` 不认识任何具体的上下文来源或展开器：它只声明两个扩展点，`context-*` 和 `expand-*` 来登记。同样，`capture` 不认识滴答：`#滴` 只是配置里的一个「路由」，存好后发布事件 `capture.saved { item_id, routes }`，`dida-push` 订阅它；整理界面的 `P` 是 `dida-push` 登记到 `review.actions` 扩展点上的。
+
+滴答的组件（`dida-openapi`、`dida-tasks`、`dida-commands`）来自共享仓库 [dida](../../dida)，和 mk-kit 一样用 path 依赖，三个仓库要放在同一个目录下。
 
 ## 规则和检查
 

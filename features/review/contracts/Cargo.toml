@@ -1,0 +1,18 @@
+[package]
+name = "review-contracts"
+description = "契约：整理界面的扩展点 review.actions，别的组件给条目加按键。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[features]
+testing = []
+
+[dependencies]
+kernel-api.workspace = true
+tui-contract.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

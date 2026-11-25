@@ -7,8 +7,10 @@ edition.workspace = true
 publish.workspace = true
 
 [dev-dependencies]
+fake-dida.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 [lints]
 workspace = true

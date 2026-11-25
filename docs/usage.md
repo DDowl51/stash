@@ -18,6 +18,7 @@
 | `买 3 个 =3*45` | 记成 `买 3 个 135`，原式记进上下文 |
 | `;会`（配置的缩写） | 换成模板文字 |
 | `!gh 123`（配置的前缀） | 交给你的脚本改写 |
+| `看 PR #滴` | 存好后再推一份到滴答清单（见下面的「滴答清单」），`#滴` 从文字里去掉。命令行写 `--to dida` 一样 |
 
 什么都没写时进收件箱。快捷键带了 `--kind`、文字里又写了 `#`，以 `#` 为准。
 
@@ -83,6 +84,7 @@ stash-tui
 | `o` | 打开链接 |
 | `O` | 看截图 |
 | `d` | 删除，再按一次 `d` 确认 |
+| `P` | 推到滴答清单（见下面） |
 | `F5` | 刷新（默认每 30 秒也会自动刷新） |
 | `Esc` | 取消确认或输入；没在确认时退出 |
 | `q` | 退出 |
@@ -120,6 +122,23 @@ $ stash done hf74
 # 例子：今天到期的待办，发到手机上
 stash ls --kind todo --due today --json | jq -r .text | …
 ```
+
+## 滴答清单
+
+stash 可以把条目推成[滴答清单](https://dida365.com)的任务，也能直接用滴答的命令。这部分来自共享仓库 dida，配置见 [配置](configuration.md#滴答清单)。先登录一次（和独立的 `dida` 共用）：
+
+```bash
+stash dida login            # 打开浏览器授权；ssh 里用 --manual，再 --callback '<网址>'
+```
+
+**推到滴答**：记录时写 `#滴`，或者 `stash dida push <id>`，或者在 `stash-tui` 里按 `P`。条目原样留在 stash，只多一条「滴答任务」链接；两边以后各管各的。没推过去（比如断网）时条目照样存着，记一条失败原因：
+
+```bash
+stash dida push --retry     # 重推所有失败过的
+stash dida push <id> --force  # 推过的再推一次
+```
+
+**滴答自己的命令**：`stash dida ls [today|week|inbox|all|<清单>]`、`stash dida add "买菜 @明天 !高 ~生活"`、`done`、`due`、`mv`、`projects`、`sync`，和独立的 `dida` 一样。
 
 ## 隐私
 

@@ -29,6 +29,10 @@ screenshot-niri.workspace = true
 storage-sqlite.workspace = true
 vcs-git.workspace = true
 wm-niri.workspace = true
+# 滴答清单（共享仓库 dida）
+dida-openapi.workspace = true
+dida-tasks.workspace = true
+dida-commands.workspace = true
 # 应用功能
 capture.workspace = true
 context-browser.workspace = true
@@ -41,6 +45,7 @@ expand-script.workspace = true
 expand-snippets.workspace = true
 items.workspace = true
 remind.workspace = true
+dida-push.workspace = true
 
 [build-dependencies]
 boot-build.workspace = true

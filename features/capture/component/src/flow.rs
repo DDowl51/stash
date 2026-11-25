@@ -12,14 +12,14 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use capture_contracts::{
-    ContextEntry, ContextProvider, Draft, Expander, Kind, Phase, Snapshot, WindowInfo,
+    ContextEntry, ContextProvider, Draft, Expander, Kind, Phase, Saved, Snapshot, WindowInfo,
 };
 use capture_core::{
     Outcome, Rules, expander_failed, local_date, ordered, settle, source_line, split_source,
 };
 use clock_contract::{Clock, Moment};
 use items_contracts::{Item, Items, NewItem};
-use kernel_api::{AppError, Collector};
+use kernel_api::{AppError, Collector, Publisher};
 use log_contract::Logger;
 use prompt_contract::{Answer, Prompt, PromptRequest};
 use tokio::task::JoinSet;
@@ -36,6 +36,7 @@ pub(crate) struct Capture {
     pub providers: Collector<dyn ContextProvider>,
     pub expanders: Collector<dyn Expander>,
     pub log: Logger,
+    pub saved: Publisher<Saved>,
     pub rules: Rules,
     pub config: Config,
 }
@@ -201,13 +202,27 @@ impl Capture {
         self.shape(draft, at).await
     }
 
+    /// 存好了：发 `capture.saved`。发不出去只记日志，条目已经存下了。
+    async fn announce(&self, item: &Item, routes: Vec<String>) {
+        let event = Saved {
+            item_id: item.id.clone(),
+            routes,
+        };
+        if let Err(e) = self.saved.publish(event).await {
+            self.log
+                .warn(format!("「记好了」的通知没发出去：{e}"))
+                .await;
+        }
+    }
+
     /// 不弹框、不采上下文，按同样的语法记一条。去掉标记后什么都不剩是 `validation`。
     pub(crate) async fn add(&self, draft: Draft) -> Result<Item, AppError> {
         let draft = self.parse(draft).await?;
         if draft.text.is_empty() {
             return Err(AppError::validation("除了 # 和 @ 标记什么都没写"));
         }
-        self.items
+        let item = self
+            .items
             .add(NewItem {
                 text: draft.text,
                 url: draft.url,
@@ -216,7 +231,9 @@ impl Capture {
                 context: draft.context,
                 ..NewItem::default()
             })
-            .await
+            .await?;
+        self.announce(&item, draft.routes).await;
+        Ok(item)
     }
 
     /// 完整的记录流程。`message` 有值时不弹框。取消了返回 `None`。
@@ -224,6 +241,7 @@ impl Capture {
         &self,
         kind: Option<Kind>,
         message: Option<String>,
+        routes: Vec<String>,
     ) -> Result<Option<Item>, AppError> {
         // 1. 按键那一刻
         let at = self.clock.now().await?;
@@ -280,6 +298,7 @@ impl Capture {
                 Draft {
                     text,
                     kind,
+                    routes,
                     ..Draft::default()
                 },
                 at,
@@ -304,6 +323,7 @@ impl Capture {
         context.extend(notes);
         context.extend(draft.context);
         let (given_source, context) = split_source(context);
+        let routes = draft.routes;
 
         let item = self
             .items
@@ -317,10 +337,26 @@ impl Capture {
                 context,
             })
             .await;
-        if item.is_err() {
-            // 没写进去：提供者留下的东西（截图）也不该留着
-            self.discard(&all, &snapshot).await;
+        match item {
+            Ok(item) => {
+                self.announce(&item, routes).await;
+                Ok(Some(item))
+            }
+            Err(e) => {
+                // 没写进去：提供者留下的东西（截图）也不该留着
+                self.discard(&all, &snapshot).await;
+                Err(e)
+            }
         }
-        item.map(Some)
+    }
+}
+
+/// `capture` 契约：只是把 `parse` 交出去。
+pub(crate) struct Service(pub Arc<Capture>);
+
+#[kernel_api::async_trait]
+impl capture_contracts::Capture for Service {
+    async fn parse(&self, draft: Draft) -> Result<Draft, AppError> {
+        self.0.parse(draft).await
     }
 }

@@ -15,6 +15,10 @@ serde_json.workspace = true
 
 # 这个进程里的组件。加一行就多装一个，不用改代码。
 clock-system.workspace = true
+dida-openapi.workspace = true
+dida-push.workspace = true
+dida-tasks.workspace = true
+exec-tokio.workspace = true
 items.workspace = true
 log-stderr.workspace = true
 review.workspace = true

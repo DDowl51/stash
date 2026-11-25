@@ -13,12 +13,14 @@ id = "review"
 kernel-api.workspace = true
 items-contracts.workspace = true
 review-core.workspace = true
+review-contracts.workspace = true
 tui-contract.workspace = true
 clock-contract.workspace = true
 
 [dev-dependencies]
 items-contracts = { workspace = true, features = ["testing"] }
 tui-contract = { workspace = true, features = ["testing"] }
+review-contracts = { workspace = true, features = ["testing"] }
 clock-contract = { workspace = true, features = ["testing"] }
 log-contract = { workspace = true, features = ["testing"] }
 items.workspace = true

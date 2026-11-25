@@ -35,6 +35,27 @@ fn opt(name: &str, help: &str, values: &[&str]) -> ArgSpec {
     )
 }
 
+fn to_opt() -> ArgSpec {
+    opt(
+        "to",
+        "存好后还要送到哪（路由名，逗号分隔，比如 dida）；和文字里的 #路由标记 一样",
+        &[],
+    )
+}
+
+fn to_arg(inv: &Invocation) -> Vec<String> {
+    inv.args
+        .get("to")
+        .map(|v| {
+            v.split(',')
+                .map(str::trim)
+                .filter(|r| !r.is_empty())
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 fn kind_opt() -> ArgSpec {
     opt("kind", "放进哪个分类；文字里的 #标记 优先", KINDS)
 }
@@ -98,6 +119,9 @@ fn render_draft(d: &Draft, format: Format) -> Result<String, AppError> {
     for c in &d.context {
         s.push_str(&format!("上下文  {}  {}\n", c.label, c.value));
     }
+    if !d.routes.is_empty() {
+        s.push_str(&format!("送到  {}\n", d.routes.join("、")));
+    }
     Ok(s)
 }
 
@@ -111,6 +135,7 @@ impl CommandProvider for Commands {
                 args: vec![
                     kind_opt(),
                     opt("message", "直接用这段文字，不弹输入框（上下文照样采）", &[]),
+                    to_opt(),
                 ],
             },
             CommandSpec {
@@ -120,6 +145,7 @@ impl CommandProvider for Commands {
                     arg("words", "要记的内容", ArgKind::Rest),
                     kind_opt(),
                     opt("due", "截止日期 YYYY-MM-DD；文字里的 @日期 优先", &[]),
+                    to_opt(),
                 ],
             },
             CommandSpec {
@@ -134,7 +160,11 @@ impl CommandProvider for Commands {
         let text = match inv.command.as_str() {
             "capture" => {
                 let message = inv.args.get("message").cloned();
-                match self.0.capture(kind_arg(&inv)?, message).await? {
+                match self
+                    .0
+                    .capture(kind_arg(&inv)?, message, to_arg(&inv))
+                    .await?
+                {
                     Some(it) => render_item(&it, inv.format)?,
                     // 取消了：没事不输出
                     None => String::new(),
@@ -147,6 +177,7 @@ impl CommandProvider for Commands {
                         text: words(&inv)?,
                         kind: kind_arg(&inv)?,
                         due_on: inv.args.get("due").cloned(),
+                        routes: to_arg(&inv),
                         ..Draft::default()
                     })
                     .await?;

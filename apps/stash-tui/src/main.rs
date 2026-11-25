@@ -36,6 +36,17 @@ async fn run(app: &App) -> Result<u8, AppError> {
                     .into_owned(),
             ),
         );
+        // 整理界面里的「推到滴答」：token 和独立的 dida 共用一份
+        settings.set_default(
+            "dida-openapi",
+            "token_path",
+            serde_json::Value::String(
+                boot::data_dir("dida")
+                    .join("token.json")
+                    .to_string_lossy()
+                    .into_owned(),
+            ),
+        );
     })
     .await?;
     let code = match running.resolve(&TUI) {
@@ -103,6 +114,10 @@ mod tests {
             LINKED_COMPONENTS,
             [
                 "clock-system",
+                "dida-openapi",
+                "dida-push",
+                "dida-tasks",
+                "exec-tokio",
                 "items",
                 "log-stderr",
                 "review",

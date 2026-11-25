@@ -122,8 +122,12 @@ impl Items for Service {
         if let Some(status) = patch.status {
             it.status = status;
         }
+        if patch.append_context.iter().any(|c| c.key.trim().is_empty()) {
+            return Err(AppError::validation("追加的上下文要有 key"));
+        }
+        it.context.extend(patch.append_context.iter().cloned());
         it.updated_at = self.now().await?.0;
-        self.repo.save(&it).await?;
+        self.repo.save(&it, &patch.append_context).await?;
         self.notify(vec![it.id.clone()]).await;
         Ok(it)
     }
@@ -177,7 +181,7 @@ impl Items for Service {
             }
         };
         it.updated_at = now;
-        self.repo.save(&it).await?;
+        self.repo.save(&it, &[]).await?;
         self.notify(changed).await;
         Ok(())
     }

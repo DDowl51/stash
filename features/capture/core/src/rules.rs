@@ -9,7 +9,20 @@ use kernel_api::AppError;
 pub struct Rules {
     /// 标记（小写，不带 `#`）→ 分类。
     tags: Vec<(String, Kind)>,
+    /// 标记（小写，不带 `#`）→ 路由名。
+    routes: Vec<(String, String)>,
     url_kind: Kind,
+}
+
+/// 标记不能是空的、不能带空白或 `#`。
+fn check_tag(word: &str, what: &str) -> Result<String, AppError> {
+    let tag = word.to_lowercase();
+    if tag.is_empty() || tag.contains(char::is_whitespace) || tag.contains('#') {
+        return Err(AppError::config(format!(
+            "{what} `{word}` 不行：不能是空的，不能带空白或 #"
+        )));
+    }
+    Ok(tag)
 }
 
 /// URL 末尾常跟着的标点，不算 URL 的一部分。
@@ -35,12 +48,7 @@ impl Rules {
         let mut all: Vec<(String, Kind)> = Vec::new();
         for (kind, words) in tags {
             for word in words {
-                let tag = word.to_lowercase();
-                if tag.is_empty() || tag.contains(char::is_whitespace) || tag.contains('#') {
-                    return Err(AppError::config(format!(
-                        "分类标记 `{word}` 不行：不能是空的，不能带空白或 #"
-                    )));
-                }
+                let tag = check_tag(&word, "分类标记")?;
                 if let Some((_, other)) = all.iter().find(|(t, _)| *t == tag)
                     && *other != kind
                 {
@@ -55,8 +63,49 @@ impl Rules {
         }
         Ok(Self {
             tags: all,
+            routes: Vec::new(),
             url_kind,
         })
+    }
+
+    /// 路由标记：路由名 → 标记。`#标记` 从文字里去掉，路由名记进草稿的 `routes`。
+    /// 路由名不能有空白；标记不能和分类标记、别的路由的标记重复。
+    pub fn with_routes(
+        mut self,
+        routes: impl IntoIterator<Item = (String, Vec<String>)>,
+    ) -> Result<Self, AppError> {
+        for (route, words) in routes {
+            if route.trim().is_empty() || route.contains(char::is_whitespace) {
+                return Err(AppError::config(format!(
+                    "路由名 `{route}` 不能是空的、不能带空白"
+                )));
+            }
+            for word in words {
+                let tag = check_tag(&word, "路由标记")?;
+                if self.tags.iter().any(|(t, _)| *t == tag) {
+                    return Err(AppError::config(format!(
+                        "路由标记 `{word}` 和分类标记重复了"
+                    )));
+                }
+                if let Some((_, other)) = self.routes.iter().find(|(t, _)| *t == tag)
+                    && *other != route
+                {
+                    return Err(AppError::config(format!(
+                        "路由标记 `{word}` 同时指向 {other} 和 {route}"
+                    )));
+                }
+                self.routes.push((tag, route.clone()));
+            }
+        }
+        Ok(self)
+    }
+
+    fn route(&self, word: &str) -> Option<&str> {
+        let word = word.to_lowercase();
+        self.routes
+            .iter()
+            .find(|(t, _)| *t == word)
+            .map(|(_, r)| r.as_str())
     }
 
     fn tag(&self, word: &str) -> Option<Kind> {
@@ -77,9 +126,14 @@ impl Rules {
     pub fn apply(&self, draft: Draft, today: Date) -> Draft {
         let mut kind_tag = None;
         let mut due = None;
+        let mut routes = draft.routes;
         let mut kept: Vec<&str> = Vec::new();
         for token in draft.text.split_whitespace() {
-            if let Some(kind) = token.strip_prefix('#').and_then(|w| self.tag(w)) {
+            if let Some(route) = token.strip_prefix('#').and_then(|w| self.route(w)) {
+                if !routes.iter().any(|r| r == route) {
+                    routes.push(route.to_owned());
+                }
+            } else if let Some(kind) = token.strip_prefix('#').and_then(|w| self.tag(w)) {
                 kind_tag = Some(kind);
             } else if let Some(date) = token
                 .strip_prefix('@')
@@ -100,6 +154,7 @@ impl Rules {
             url: draft.url.or_else(|| first_url.map(str::to_owned)),
             text: kept.join(" "),
             context: draft.context,
+            routes,
         }
     }
 }
@@ -148,6 +203,7 @@ mod tests {
             due_on: due.map(str::to_owned),
             url: url.map(str::to_owned),
             context: vec![],
+            routes: vec![],
         }
     }
 
@@ -300,5 +356,65 @@ mod tests {
         }
         // 同一个分类重复写不算错
         Rules::new([(Kind::Todo, vec!["t".into(), "T".into()])], Kind::Inbox).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod route_tests {
+    use super::*;
+
+    fn rules() -> Rules {
+        Rules::new([(Kind::Todo, vec!["t".into()])], Kind::ReadLater)
+            .unwrap()
+            .with_routes([("dida".to_owned(), vec!["滴".into(), "Dida".into()])])
+            .unwrap()
+    }
+
+    fn apply(draft: Draft) -> Draft {
+        rules().apply(draft, "2026-11-18".parse().unwrap())
+    }
+
+    #[test]
+    fn route_tags_leave_the_text_and_land_in_routes() {
+        let d = apply(Draft {
+            text: "看 PR #滴 #t #DIDA".into(),
+            ..Draft::default()
+        });
+        assert_eq!(d.text, "看 PR");
+        assert_eq!(d.kind, Some(Kind::Todo));
+        assert_eq!(d.routes, ["dida"], "同一个路由只记一次，标记不分大小写");
+    }
+
+    #[test]
+    fn routes_from_the_command_line_are_kept() {
+        let d = apply(Draft {
+            text: "看 PR #滴".into(),
+            routes: vec!["mail".into()],
+            ..Draft::default()
+        });
+        assert_eq!(d.routes, ["mail", "dida"]);
+        let plain = apply(Draft {
+            text: "#滴滴 打车".into(),
+            ..Draft::default()
+        });
+        assert!(plain.routes.is_empty(), "不是配置里的标记原样保留");
+        assert_eq!(plain.text, "#滴滴 打车");
+    }
+
+    #[test]
+    fn route_config_errors() {
+        let base = || Rules::new([(Kind::Todo, vec!["t".into()])], Kind::ReadLater).unwrap();
+        for bad in [
+            vec![("dida".to_owned(), vec!["t".to_owned()])],
+            vec![("di da".to_owned(), vec!["x".to_owned()])],
+            vec![("dida".to_owned(), vec!["#x".to_owned()])],
+            vec![
+                ("a".to_owned(), vec!["x".to_owned()]),
+                ("b".to_owned(), vec!["x".to_owned()]),
+            ],
+        ] {
+            let err = base().with_routes(bad.clone()).unwrap_err();
+            assert_eq!(err.kind, kernel_api::ErrorKind::Config, "{bad:?}");
+        }
     }
 }

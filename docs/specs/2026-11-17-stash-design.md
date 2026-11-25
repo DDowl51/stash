@@ -543,6 +543,7 @@ binds {
 | 待办页的顺序 | 先过期、再今天、再手动排序 | 只按手动排序；过期、今天到期用样式标出，页头写个数 | 显示顺序和排序值不一致时 `J/K` 的效果说不清 |
 | `D` 的写法 | — | `2026-11-20`、`11-20`、`今天/明天/后天`、`+3`、留空清掉 | 完整的 `@周五` 语法在 `capture-core` 里，`review` 不能依赖别的功能的 core；记录时用完整语法，整理时够用 |
 | `@日期` 和 `D` 的解析（2026-11-25） | `capture-core` 的 `due.rs`、`review-core` 自己的 `due_input` 各一份 | 抽成 mk-kit 的纯逻辑库 `crates/zh-dates`，`capture`、`review`、`items` 都用它；`D` 因此也认 `周五`、`下周一`、`12月1日` | 规范加了「纯逻辑库」角色（core 可以依赖），上一行说的限制没有了；dida 也用同一份 |
+| 接入滴答（2026-11-25，dida 设计的阶段 5） | — | 新组件 `dida-push`；`capture` 加「路由」（`routes` 配置、`--to`、草稿的 `routes` 字段）和事件 `capture.saved`；`items` 的 `ItemPatch` 加 `append_context`；`review` 加扩展点 `review.actions`（新的契约包 `review-contracts`）；启动器链接 dida 仓库的 `dida-openapi`、`dida-tasks`、`dida-commands` | 设计见 dida 仓库 `docs/specs/2026-11-25-dida-design.md`。`capture.saved` 要属于一个 `capture` 提供的契约，所以 `capture` 加了一个只有 `parse` 的服务契约 `capture` |
 | `items` 的命令行依赖 | 必需 | 改为 `optional_requires` | `stash-tui` 进程里没有命令行服务 |
 | 界面真机测试 | 独立 socket 的 tmux | 开发机没装 tmux，用 Python 的 pty 跑真实的 `stash-tui`：发按键、检查输出里的文字，退出后用命令行核对数据库 | 效果相同（真实终端、真实按键），不用装东西 |
 | 到期提醒的形状 | 每个提醒一条通知 | 收件箱积压一条；到期的合成一条（列前 `max_listed` 个，有过期的用紧急），但每个条目各占一个 key（`due:<id>`），当天新到期的还会再提醒 | 同时到期好几条时不刷屏；又不会因为合并而漏掉当天新到期的 |

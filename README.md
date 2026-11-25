@@ -46,11 +46,12 @@
 - **整理在终端里做**：`stash-tui` 分五页，单键操作：分流、完成、归档、设截止、排序、打开链接、看截图。
 - **到期会提醒**：systemd timer 每小时看一次，收件箱积压或条目到期时发桌面通知，同一件事一天只提醒一次。
 - **命令行友好**：在管道里输出 JSONL，退出码遵循 sysexits，id 只写最后几位也行。
+- **能推到滴答清单**：记录时写 `#滴`，或者在整理界面按 `P`，条目推成滴答任务，stash 里留着链接；`stash dida …` 直接用滴答。
 - **每样能力都是组件**：截图、浏览器、终端探测都可以单独关掉（`enabled = false`），也可以换成别的实现。
 
 ## 快速开始
 
-需要 niri、[vicinae](https://github.com/vicinaehq/vicinae)（弹输入框用）、`wl-clipboard`、stable Rust（edition 2024）。本仓库和共享仓库 [mk-kit](../mk-kit) 要放在同一个目录下。
+需要 niri、[vicinae](https://github.com/vicinaehq/vicinae)（弹输入框用）、`wl-clipboard`、stable Rust（edition 2024）。本仓库和两个共享仓库 [mk-kit](../mk-kit)、[dida](../dida) 要放在同一个目录下。
 
 ```bash
 scripts/install.sh       # 装 stash、stash-tui 到 ~/.cargo/bin，放好提醒用的 systemd 单元

@@ -299,25 +299,38 @@ impl Repo {
         self.sql.execute(stmts).await.map(drop)
     }
 
-    /// 写回可改的字段。
-    pub async fn save(&self, it: &Item) -> Result<(), AppError> {
-        self.sql
-            .execute(vec![
-                Statement::new(
-                    "UPDATE items_item SET text = ?2, kind = ?3, status = ?4, rank = ?5,
+    /// 写回可改的字段；`appended` 是追加在 `it.context` 最后的那几条，一起写进去。
+    pub async fn save(&self, it: &Item, appended: &[ContextEntry]) -> Result<(), AppError> {
+        let first = it.context.len().saturating_sub(appended.len());
+        let mut stmts = vec![
+            Statement::new(
+                "UPDATE items_item SET text = ?2, kind = ?3, status = ?4, rank = ?5,
                          due_on = ?6, updated_at = ?7
                      WHERE id = ?1",
+            )
+            .bind(it.id.as_str())
+            .bind(it.text.as_str())
+            .bind(it.kind.as_str())
+            .bind(it.status.as_str())
+            .bind(it.rank)
+            .bind(it.due_on.clone())
+            .bind(it.updated_at),
+        ];
+        for (seq, c) in (i64::try_from(first).unwrap_or(i64::MAX)..).zip(appended) {
+            stmts.push(
+                Statement::new(
+                    "INSERT INTO items_context (item_id, seq, key, label, kind, value)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
                 )
                 .bind(it.id.as_str())
-                .bind(it.text.as_str())
-                .bind(it.kind.as_str())
-                .bind(it.status.as_str())
-                .bind(it.rank)
-                .bind(it.due_on.clone())
-                .bind(it.updated_at),
-            ])
-            .await
-            .map(drop)
+                .bind(seq)
+                .bind(c.key.as_str())
+                .bind(c.label.as_str())
+                .bind(c.kind.as_str())
+                .bind(c.value.as_str()),
+            );
+        }
+        self.sql.execute(stmts).await.map(drop)
     }
 
     /// 一次改好几个条目的排序值（重排一个分类时用），在一个事务里。

@@ -5,7 +5,7 @@
 //! - [`CAPTURE_EXPANDERS`]：回车之后改写输入（算式、缩写、外部命令）。每种一个 `expand-*` 组件。
 
 use clock_contract::Moment;
-use kernel_api::{AppError, contract};
+use kernel_api::{AppError, EventDef, contract};
 use serde::{Deserialize, Serialize};
 
 pub use items_contracts::{ContextEntry, ContextKind, Kind};
@@ -71,7 +71,30 @@ pub struct Draft {
     /// 展开时追加的上下文（比如原来的算式）。
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub context: Vec<ContextEntry>,
+    /// 存好之后还要送到哪些地方（路由名，比如 `dida`）。来自 `#标记`、`--to`，展开器也可以加。
+    /// `capture` 不认识任何路由：只在 `capture.saved` 事件里带出去，由订阅的组件去送。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub routes: Vec<String>,
 }
+
+/// 记好了一条（`capture`、`add` 都算）。`routes` 是这一条要送去的地方，可能是空的。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Saved {
+    pub item_id: String,
+    #[serde(default)]
+    pub routes: Vec<String>,
+}
+
+contract! {
+    /// 记录服务本身。事件 `capture.saved` 属于这个契约。
+    pub trait Capture as CAPTURE = service("capture", 1) {
+        /// 展开、解析一段文字，看会记成什么样（`#分类` `@日期` 路由……），不保存。
+        async fn parse(&self, draft: Draft) -> Result<Draft, AppError>;
+    }
+}
+
+/// 事件：记好了一条。存进去之后发；发不出去不影响已经存下的条目。
+pub static CAPTURE_SAVED: EventDef<Saved> = EventDef::new("capture", "saved");
 
 /// 展开器的自我介绍。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

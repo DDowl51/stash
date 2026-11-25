@@ -51,10 +51,21 @@ expand-calc = { path = "features/expand-calc/component" }
 expand-snippets = { path = "features/expand-snippets/component" }
 expand-script-core = { path = "features/expand-script/core" }
 expand-script = { path = "features/expand-script/component" }
+review-contracts = { path = "features/review/contracts" }
 review-core = { path = "features/review/core" }
 review = { path = "features/review/component" }
 remind-core = { path = "features/remind/core" }
 remind = { path = "features/remind/component" }
+dida-push-core = { path = "features/dida-push/core" }
+dida-push = { path = "features/dida-push/component" }
+
+# 滴答清单（共享仓库 dida，../dida）：契约和组件
+task-service-contract = { path = "../dida/contracts/task-service" }
+dida-tasks-contracts = { path = "../dida/features/dida-tasks/contracts" }
+dida-openapi = { path = "../dida/services/dida-openapi" }
+dida-tasks = { path = "../dida/features/dida-tasks/component" }
+dida-commands = { path = "../dida/features/dida-commands/component" }
+fake-dida = { path = "../dida/tests/fake-dida" }
 
 browser-chromium = { path = "../mk-kit/services/browser-chromium" }
 browser-firefox = { path = "../mk-kit/services/browser-firefox" }

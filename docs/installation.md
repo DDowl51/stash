@@ -22,10 +22,11 @@ paru -S vicinae          # AUR，或者按 vicinae 的说明安装
 
 ## 安装
 
-stash 用到的 kernel 和通用系统服务在共享仓库 mk-kit 里，两个仓库要放在同一个目录下：
+stash 用到的 kernel 和通用系统服务在共享仓库 mk-kit 里，滴答清单的组件在共享仓库 dida 里，三个仓库要放在同一个目录下：
 
 ```
 ~/code/personal/
+├── dida/
 ├── mk-kit/
 └── stash/
 ```
@@ -99,7 +100,7 @@ due_days_ahead = 1                 # 提前一天提醒
 ## 升级
 
 ```bash
-git -C ../mk-kit pull && git pull
+git -C ../mk-kit pull && git -C ../dida pull && git pull
 scripts/install.sh
 ```
 

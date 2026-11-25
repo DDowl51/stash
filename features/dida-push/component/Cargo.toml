@@ -1,0 +1,39 @@
+[package]
+name = "dida-push"
+description = "应用功能：把 stash 条目推成滴答任务（stash dida push、整理界面的按键、记录时的 #滴），条目上留下链接。"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[package.metadata.component]
+id = "dida-push"
+
+[dependencies]
+kernel-api.workspace = true
+dida-push-core.workspace = true
+items-contracts.workspace = true
+capture-contracts.workspace = true
+review-contracts.workspace = true
+dida-tasks-contracts.workspace = true
+cli-contract.workspace = true
+log-contract.workspace = true
+sql-contract.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+items-contracts = { workspace = true, features = ["testing"] }
+review-contracts = { workspace = true, features = ["testing"] }
+task-service-contract = { workspace = true, features = ["testing"] }
+cli-contract = { workspace = true, features = ["testing"] }
+clock-contract = { workspace = true, features = ["testing"] }
+log-contract = { workspace = true, features = ["testing"] }
+items.workspace = true
+dida-tasks.workspace = true
+storage-sqlite.workspace = true
+testkit.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+serde_json.workspace = true
+
+[lints]
+workspace = true

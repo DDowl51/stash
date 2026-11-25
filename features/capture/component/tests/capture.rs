@@ -654,3 +654,110 @@ async fn bad_config_fails_at_startup() {
         assert_eq!(err.kind, ErrorKind::Config, "{config}");
     }
 }
+
+/// 订阅 `capture.saved`，记下收到的。
+#[derive(Clone, Default)]
+struct SavedProbe(Arc<Mutex<Vec<capture_contracts::Saved>>>);
+
+impl SavedProbe {
+    fn got(&self) -> Vec<capture_contracts::Saved> {
+        self.0.lock().unwrap().clone()
+    }
+}
+
+impl kernel_api::Component for SavedProbe {
+    fn manifest(&self) -> kernel_api::Manifest {
+        kernel_api::Manifest {
+            id: "saved-probe",
+            kind: kernel_api::Kind::Feature,
+            summary: "测试用：记下 capture.saved",
+            provides: vec![],
+            requires: vec![capture_contracts::CAPTURE.id()],
+            optional_requires: vec![],
+        }
+    }
+
+    fn start(
+        &self,
+        _: &kernel_api::ConfigSection,
+        host: &mut kernel_api::Host<'_>,
+    ) -> Result<(), AppError> {
+        let seen = self.0.clone();
+        host.subscribe(&capture_contracts::CAPTURE_SAVED, "probe", move |e| {
+            let seen = seen.clone();
+            async move {
+                seen.lock().unwrap().push(e);
+                Ok(())
+            }
+        })
+    }
+}
+
+#[tokio::test]
+async fn saving_announces_the_item_and_its_routes() {
+    let probe = SavedProbe::default();
+    let r = rig(
+        |b| {
+            b.with(probe.clone())
+                .with(FakePrompt::types("看 PR #滴 #t"))
+        },
+        json!({ "routes": { "dida": ["滴"] } }),
+    )
+    .await;
+    r.capture(&[]).await.unwrap();
+    r.cli
+        .invoke(
+            "add",
+            &[("words", "买菜"), ("to", "dida, mail")],
+            Format::Json,
+        )
+        .await
+        .unwrap();
+    r.cli
+        .invoke("add", &[("words", "普通的")], Format::Json)
+        .await
+        .unwrap();
+    r.app.settle().await;
+    let added = r.items.added();
+    assert_eq!(added[0].text, "看 PR", "#滴 从文字里去掉");
+    let got = probe.got();
+    assert_eq!(got.len(), 3, "每存一条都发");
+    assert_eq!(Some(&got[0].item_id), added[0].id.as_ref(), "带着条目 id");
+    assert_eq!(got[0].routes, ["dida"]);
+    assert_eq!(got[1].routes, ["dida", "mail"], "--to 可以写几个");
+    assert!(got[2].routes.is_empty());
+}
+
+#[tokio::test]
+async fn cancelled_captures_announce_nothing() {
+    let probe = SavedProbe::default();
+    let r = rig(
+        |b| {
+            b.with(probe.clone())
+                .with(FakePrompt::new([Scenario::Escapes]))
+        },
+        json!({ "routes": { "dida": ["滴"] } }),
+    )
+    .await;
+    r.capture(&[("to", "dida")]).await.unwrap();
+    r.app.settle().await;
+    assert!(probe.got().is_empty());
+}
+
+#[tokio::test]
+async fn a_route_tag_clashing_with_a_kind_tag_fails_at_startup() {
+    let err = testkit::app()
+        .with(CaptureComponent)
+        .config("capture", json!({ "routes": { "dida": ["t"] } }))
+        .unwrap()
+        .with(FakeCli::default())
+        .with(RecordingItems::default())
+        .with(MemoryLog::default())
+        .with(FakeClock::at(NOW, 480))
+        .with(FakePrompt::default())
+        .boot()
+        .await
+        .err()
+        .unwrap();
+    assert_eq!(err.kind, kernel_api::ErrorKind::Config, "{err:?}");
+}

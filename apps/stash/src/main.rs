@@ -26,6 +26,18 @@ async fn run(app: &App, argv: Vec<String>) -> Result<u8, AppError> {
             "app_name",
             serde_json::Value::String("stash".to_owned()),
         );
+        // 滴答：命令挂在 `stash dida …` 下；token 和独立的 dida 共用一份，登录一次就行；
+        // 缓存放进 stash.db（一个进程只有一个库）。`#滴` 表示存好后推到滴答
+        let dida = boot::data_dir("dida");
+        let group = serde_json::Value::String("dida".to_owned());
+        settings.set_default("dida-openapi", "group", group.clone());
+        settings.set_default("dida-commands", "group", group);
+        settings.set_default("dida-openapi", "token_path", path(dida.join("token.json")));
+        settings.set_default(
+            "capture",
+            "routes",
+            serde_json::json!({ "dida": ["滴", "dida"] }),
+        );
         // 不在 niri 会话里（ssh、纯终端）时窗口和截图服务都用不了；stash 照样要能用，
         // 所以没有 NIRI_SOCKET 时默认停用它们，以及依赖截图的上下文
         if std::env::var_os("NIRI_SOCKET").is_none_or(|s| s.is_empty()) {
@@ -99,6 +111,10 @@ mod tests {
                 "context-script",
                 "context-terminal",
                 "context-window",
+                "dida-commands",
+                "dida-openapi",
+                "dida-push",
+                "dida-tasks",
                 "exec-tokio",
                 "expand-calc",
                 "expand-script",

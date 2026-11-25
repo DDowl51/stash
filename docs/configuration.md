@@ -29,7 +29,7 @@
 | 进程 | 组件 |
 |---|---|
 | `stash`（命令行、快捷键、提醒） | 除 `review`、`tui-ratatui` 之外的全部组件 |
-| `stash-tui`（整理界面） | `review`、`tui-ratatui`、`items`、`storage-sqlite`、`clock-system`、`log-stderr` |
+| `stash-tui`（整理界面） | `review`、`tui-ratatui`、`items`、`storage-sqlite`、`clock-system`、`log-stderr`，以及推到滴答用的 `dida-push`、`dida-tasks`、`dida-openapi`、`exec-tokio` |
 
 `items` 这类两个进程都有的组件，两个进程读的是同一段配置。
 
@@ -70,6 +70,7 @@ context_timeout_ms = 1000
 context_order = ["window", "terminal", "browser", "screenshot", "script"]
 expander_order = ["calc", "snippets", "script"]
 tags = { inbox = ["inbox", "in"], todo = ["todo", "t", "待办"], idea = ["idea", "i", "想法"], read_later = ["read", "r", "读"] }
+routes = {}
 ```
 
 | 键 | 说明 |
@@ -82,6 +83,7 @@ tags = { inbox = ["inbox", "in"], todo = ["todo", "t", "待办"], idea = ["idea"
 | `context_order` | 条目里各项上下文的排列顺序，写提供者 id。没列出的按 id 排在后面 |
 | `expander_order` | 输入展开的执行顺序，写展开器 id。没列出的按 id 排在后面 |
 | `tags` | `#` 后面的词对应哪个分类。不在这里的 `#词`（比如 `#C++`）原样留在文字里 |
+| `routes` | 路由名 → `#` 标记：写了这个标记，这一条存好后还要送到别处，标记从文字里去掉。`stash` 的启动器给的默认值是 `{ dida = ["滴", "dida"] }`（推到滴答，见 [dida-push](#dida-push)）。标记不能和 `tags` 里的重复。命令行的 `--to <路由>` 效果一样 |
 
 ## 上下文
 
@@ -272,6 +274,101 @@ keep_days = 30
 | `due_days_ahead` | 提前几天提醒到期，`0` 表示当天 |
 | `max_listed` | 一条通知里最多列出几个条目，多出来的写「……还有 N 条」 |
 | `keep_days` | 「今天提醒过什么」的记录保留多少天 |
+
+## 滴答清单
+
+滴答的几个组件来自共享仓库 [dida](../../dida)，和独立的 `dida`、`dida-tui` 是同一份代码。在 stash 里：命令挂在 `stash dida …` 下面；登录的 token 和独立的 dida 共用（`~/.local/share/dida/token.json`），在哪边登录都行；任务的缓存放在 `stash.db` 里（独立的 dida 另有一份，写操作都直接发给滴答，所以两份不会不一致）。
+
+先在 [developer.dida365.com](https://developer.dida365.com/manage) 建一个应用，回调地址填 `http://127.0.0.1:8765/callback`，再写好 `client_id`、`client_secret`，然后 `stash dida login`（或 `dida login`）。
+
+### dida-push
+
+把条目推成滴答任务：任务标题是条目文字，截止日期跟着带过去，来源和上下文写进任务描述（截图只写路径），最后一行是条目 id。推过去以后条目原样留在 stash，只追加一条「滴答任务」链接（整理界面里按 `o` 打开）；两边以后各管各的。
+
+三个入口：记录时写 `#滴`（或 `--to dida`）；`stash dida push <id>`；整理界面里按 `P`。推送失败时条目照样存着，追加一条失败原因，之后 `stash dida push --retry` 重推。推过的不会重复推，要再推加 `--force`。
+
+```toml
+[components.dida-push]
+project = ""
+kind_projects = {}
+key = "P"
+route = "dida"
+```
+
+| 键 | 说明 |
+|---|---|
+| `project` | 推到哪个清单（名字，开头几个字就行）。空的是收集箱 |
+| `kind_projects` | 分类 → 清单名，比如 `{ todo = "工作", read_later = "阅读" }`。没写的分类用 `project` |
+| `key` | 整理界面里的按键。不能是界面外壳自己用的键（`q / j k h l . r`），也不能和整理界面已有的键重复 |
+| `route` | `capture.routes` 里哪个路由名表示「推到滴答」 |
+
+### dida-openapi
+
+滴答的官方 Open API：OAuth 登录、token 的保存和刷新、清单和任务的读写。
+
+```toml
+[components.dida-openapi]
+region = "dida365"
+# oauth_base = "https://dida365.com"
+# api_base = "https://api.dida365.com"
+# web_base = "https://dida365.com"
+client_id = ""
+client_secret = ""
+redirect_port = 8765
+# token_path = "~/.local/share/dida/token.json"
+# time_zone = "Asia/Shanghai"
+timeout_ms = 10000
+login_timeout_secs = 300
+opener = ["xdg-open"]
+# inbox_id = "inbox123456"
+group = ""
+```
+
+| 键 | 说明 |
+|---|---|
+| `region` | `dida365`（国内版）或 `ticktick`（国际版），决定授权、token、API、网页四个地址 |
+| `oauth_base`、`api_base`、`web_base` | 不写由 `region` 决定 |
+| `client_id`、`client_secret` | 开发者后台里建的应用。secret 建议写成 `client_secret_cmd = "pass dida/client-secret"` |
+| `redirect_port` | 回调地址 `http://127.0.0.1:<端口>/callback` 的端口，要和开发者后台里填的一样 |
+| `token_path` | token 文件（权限 0600）。不写时启动器给 `$XDG_DATA_HOME/dida/token.json`，和独立的 dida 共用 |
+| `time_zone` | 全天日期用的时区。不写用系统时区 |
+| `timeout_ms` | 单个请求最多等多久 |
+| `login_timeout_secs` | `login` 等浏览器回调最多等多久。ssh 里用 `login --manual` 和 `login --callback` 两步走 |
+| `opener` | 打开授权页的命令，网址加在最后。空表示只打印网址 |
+| `inbox_id` | 收集箱的 id。不写就问滴答 |
+| `group` | 命令挂在哪一组下面。`stash` 的启动器设成 `dida`（`stash dida login`） |
+
+### dida-tasks
+
+滴答任务的本地缓存：整份同步，读都走缓存，写直接发给滴答、成功后更新缓存。
+
+```toml
+[components.dida-tasks]
+max_age_secs = 300
+max_concurrency = 4
+```
+
+| 键 | 说明 |
+|---|---|
+| `max_age_secs` | 读之前缓存比这旧就先同步。`0` 表示每次都同步 |
+| `max_concurrency` | 同步时同时取几个清单 |
+
+### dida-commands
+
+`stash dida ls / add / done / rm / edit / due / mv / projects / sync`。用法见 dida 仓库的文档；`add` 的快速语法是 `买菜 @明天 !高 ~生活`。
+
+```toml
+[components.dida-commands]
+group = ""
+default_view = "today"
+week_days = 7
+```
+
+| 键 | 说明 |
+|---|---|
+| `group` | 命令挂在哪一组下面。`stash` 的启动器设成 `dida` |
+| `default_view` | `ls` 不写视图时看哪个：`today`、`week`、`inbox`、`all`，或者清单名 |
+| `week_days` | `ls week` 看几天（含今天） |
 
 ## 整理界面
 

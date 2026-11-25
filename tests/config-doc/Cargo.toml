@@ -38,6 +38,10 @@ screenshot-niri.workspace = true
 storage-sqlite.workspace = true
 tui-ratatui.workspace = true
 vcs-git.workspace = true
+dida-commands.workspace = true
+dida-openapi.workspace = true
+dida-push.workspace = true
+dida-tasks.workspace = true
 wm-niri.workspace = true
 
 [build-dependencies]

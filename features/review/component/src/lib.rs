@@ -8,13 +8,14 @@ use std::sync::Arc;
 use clock_contract::{CLOCK, Clock, Moment};
 use items_contracts::{DueChange, ITEMS, Item, ItemFilter, ItemPatch, Items, Kind, Status};
 use kernel_api::{
-    AppError, Component, ConfigSection, Host, Kind as ComponentKind, Manifest, NoConfig,
+    AppError, Collector, Component, ConfigSection, Host, Kind as ComponentKind, Manifest, NoConfig,
     async_trait, register_component,
 };
+use review_contracts::{ItemActionRequest, ItemActionSpec, ItemActions, RESERVED, REVIEW_ACTIONS};
 use review_core::{Op, Page, context_to_open, due_input, neighbour, row, short_id, today};
 use tui_contract::{
-    ActionRequest, ActionResult, Ask, Block, PageProvider, PageRequest, PageSpec, PageView,
-    TUI_PAGES,
+    ActionRequest, ActionResult, ActionSpec, Ask, Block, PageProvider, PageRequest, PageSpec,
+    PageView, TUI_PAGES,
 };
 
 /// 已完成页最多列多少条。
@@ -23,6 +24,45 @@ const DONE_LIMIT: u32 = 200;
 struct Pages {
     items: Arc<dyn Items>,
     clock: Arc<dyn Clock>,
+    /// 别的组件登记的条目按键（`review.actions`）。
+    extra: Collector<dyn ItemActions>,
+}
+
+impl Pages {
+    /// 登记上来的按键，和它的登记者。
+    async fn extra_actions(&self) -> Result<Vec<(ItemActionSpec, Arc<dyn ItemActions>)>, AppError> {
+        let mut out = Vec::new();
+        for provider in self.extra.all() {
+            for spec in provider.actions().await? {
+                out.push((spec, provider.clone()));
+            }
+        }
+        Ok(out)
+    }
+
+    /// 这一页的完整描述：自己的键 + 登记上来的键。键冲突是配置错误（启动界面时就报）。
+    async fn spec_of(&self, page: Page) -> Result<PageSpec, AppError> {
+        let mut spec = page.spec();
+        for (extra, _) in self.extra_actions().await? {
+            if page == Page::Done && !extra.on_done_page {
+                continue;
+            }
+            if RESERVED.contains(&extra.key) || spec.actions.iter().any(|a| a.key == extra.key) {
+                return Err(AppError::config(format!(
+                    "review.actions 登记的键 `{}`（{}）在「{}」页已经有用处了，换一个",
+                    extra.key,
+                    extra.label,
+                    page.title()
+                )));
+            }
+            spec.actions.push(ActionSpec {
+                key: extra.key,
+                label: extra.label,
+                confirm: extra.confirm,
+            });
+        }
+        Ok(spec)
+    }
 }
 
 fn page_of(id: &str) -> Result<Page, AppError> {
@@ -220,7 +260,11 @@ impl Pages {
 #[async_trait]
 impl PageProvider for Pages {
     async fn pages(&self) -> Result<Vec<PageSpec>, AppError> {
-        Ok(Page::ALL.into_iter().map(Page::spec).collect())
+        let mut out = Vec::new();
+        for page in Page::ALL {
+            out.push(self.spec_of(page).await?);
+        }
+        Ok(out)
     }
 
     async fn render(&self, page: String, _request: PageRequest) -> Result<PageView, AppError> {
@@ -267,6 +311,24 @@ impl PageProvider for Pages {
     async fn act(&self, page: String, request: ActionRequest) -> Result<ActionResult, AppError> {
         let page = page_of(&page)?;
         let Some(op) = page.op(request.key) else {
+            // 不是自己的键：交给登记了这个键的组件
+            let found = self
+                .extra_actions()
+                .await?
+                .into_iter()
+                .find(|(s, _)| s.key == request.key && (page != Page::Done || s.on_done_page));
+            if let Some((_, provider)) = found {
+                let Some(item_id) = request.row else {
+                    return Ok(said("没有选中的条目"));
+                };
+                return provider
+                    .act(ItemActionRequest {
+                        key: request.key,
+                        item_id,
+                        input: request.input,
+                    })
+                    .await;
+            }
             return Err(AppError::validation(format!(
                 "页面「{}」没有按键 `{}`",
                 page.title(),
@@ -292,7 +354,8 @@ impl Component for Review {
             id: "review",
             kind: ComponentKind::Feature,
             summary: "终端里整理条目：收件箱、待办、想法、稍后读、已完成",
-            provides: vec![],
+            // 扩展点由 review 拥有：没有组件登记时就是没有额外的键
+            provides: vec![REVIEW_ACTIONS.id()],
             requires: vec![ITEMS.id(), CLOCK.id(), TUI_PAGES.id()],
             optional_requires: vec![],
         }
@@ -303,6 +366,7 @@ impl Component for Review {
         let pages = Pages {
             items: host.resolve(&ITEMS)?,
             clock: host.resolve(&CLOCK)?,
+            extra: host.collector(&REVIEW_ACTIONS)?,
         };
         host.contribute(&TUI_PAGES, Arc::new(pages))
     }
