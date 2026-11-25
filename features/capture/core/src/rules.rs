@@ -4,8 +4,6 @@ use capture_contracts::{Draft, Kind};
 use jiff::civil::Date;
 use kernel_api::AppError;
 
-use crate::due::due_word;
-
 /// 分类标记和「只有 URL 时」归到哪类。来自配置。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rules {
@@ -83,7 +81,10 @@ impl Rules {
         for token in draft.text.split_whitespace() {
             if let Some(kind) = token.strip_prefix('#').and_then(|w| self.tag(w)) {
                 kind_tag = Some(kind);
-            } else if let Some(date) = token.strip_prefix('@').and_then(|w| due_word(w, today)) {
+            } else if let Some(date) = token
+                .strip_prefix('@')
+                .and_then(|w| zh_dates::parse(w, today))
+            {
                 due = Some(date);
             } else {
                 kept.push(token);

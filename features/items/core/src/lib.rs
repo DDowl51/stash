@@ -1,9 +1,7 @@
 //! `items` 的纯逻辑：校验、排序值、到期区间、id 写法。不碰存储和时钟。
 
 use items_contracts::DueFilter;
-use jiff::Timestamp;
 use jiff::civil::Date;
-use jiff::tz::{Offset, TimeZone};
 use kernel_api::AppError;
 
 /// 新条目之间排序值的间隔。挪位置时取两边的中点，间隔用完再整体重排。
@@ -63,11 +61,7 @@ pub fn check_id(id: &str) -> Result<String, AppError> {
 
 /// 本地的今天。
 pub fn local_date(utc_ms: i64, offset_min: i32) -> Result<Date, AppError> {
-    let ts = Timestamp::from_millisecond(utc_ms)
-        .map_err(|e| AppError::validation(format!("时刻 {utc_ms} 不对：{e}")))?;
-    let offset = Offset::from_seconds(offset_min * 60)
-        .map_err(|e| AppError::validation(format!("时区偏移 {offset_min} 分钟不对：{e}")))?;
-    Ok(ts.to_zoned(TimeZone::fixed(offset)).date())
+    zh_dates::local_date(utc_ms, offset_min)
 }
 
 /// 到期筛选对应的截止日期区间 `[from, to]`（含两端，`None` 表示不限）。日期按字符串比较。

@@ -148,7 +148,8 @@ impl Pages {
                     let it = self.items.get(id.to_owned()).await?;
                     ActionResult {
                         ask: Some(Ask {
-                            prompt: "截止（2026-11-20、11-20、明天、+3，留空清掉）".to_owned(),
+                            prompt: "截止（2026-11-20、11-20、明天、周五、+3，留空清掉）"
+                                .to_owned(),
                             initial: it.due_on.unwrap_or_default(),
                         }),
                         ..ActionResult::default()

@@ -11,6 +11,7 @@ items-contracts.workspace = true
 tui-contract.workspace = true
 clock-contract.workspace = true
 jiff.workspace = true
+zh-dates.workspace = true
 
 [lints]
 workspace = true
